@@ -1099,6 +1099,9 @@ const App = {
             const mSnap = await db.ref(`messes/${mid}/members`).once('value');
             const others = Object.keys(mSnap.val() || {}).filter(id => id !== uid && !id.startsWith('member_'));
             if (!others.length) {
+                if (this.userRole !== 'admin') {
+                    try { await db.ref(`messes/${mid}/members/${uid}/role`).set('admin'); } catch (e) { /* sole member may self-promote */ }
+                }
                 const ok = await this.deleteMessFully(mid);
                 if (ok) {
                     this._userMessesCacheUpdate(mid, null);

@@ -20,11 +20,11 @@
       }
     },
     "messes": {
-      ".read": "auth != null && query.orderByChild == 'settings/messCode' && query.equalTo is string",
+      ".read": "auth != null && query.orderByChild == 'settings/messCode' && query.equalTo != null",
       ".indexOn": ["settings/messCode"],
       "$mid": {
         ".read": "auth != null && (!data.exists() || (data.child('members').child(auth.uid).child('role').exists() && data.child('members').child(auth.uid).child('status').val() !== 'pending'))",
-        ".write": "auth != null && ((!data.exists() && newData.child('settings').child('messCode').isString() && newData.child('settings').child('owner').val() == auth.uid && newData.child('members').child(auth.uid).child('role').val() == 'admin') || (data.child('members').child(auth.uid).child('role').val() == 'admin' && data.child('members').child(auth.uid).child('status').val() !== 'pending') || (data.child('permissions').child(auth.uid).child('manage').val() == true && data.child('members').child(auth.uid).child('role').exists() && data.child('members').child(auth.uid).child('status').val() !== 'pending') || (!newData.exists() && ((data.child('members').child(auth.uid).child('role').exists() && data.child('members').child(auth.uid).child('status').val() !== 'pending' && data.child('members').numChildren() == 1) || data.child('members').numChildren() == 0)))",
+        ".write": "auth != null && ((!data.exists() && newData.child('settings').child('messCode').isString() && newData.child('settings').child('owner').val() == auth.uid && newData.child('members').child(auth.uid).child('role').val() == 'admin') || (data.child('members').child(auth.uid).child('role').val() == 'admin' && data.child('members').child(auth.uid).child('status').val() !== 'pending') || (data.child('permissions').child(auth.uid).child('manage').val() == true && data.child('members').child(auth.uid).child('role').exists() && data.child('members').child(auth.uid).child('status').val() !== 'pending') || (!newData.exists() && !data.child('members').exists()))",
         "members": {
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
