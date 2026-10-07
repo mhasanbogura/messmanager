@@ -70,7 +70,7 @@ task release {
         def v = currentNameMatcher[0][1]
         def b = currentCodeMatcher[0][1] as int
 
-        def apkName = "mess-manager.apk"
+        def apkName = "MessManager.apk"
         def apkPath = file("${buildDir}/outputs/apk/debug/app-debug.apk")
         def tagName = "v${v}"
         def rootDir = project.projectDir.parentFile
@@ -87,7 +87,7 @@ task release {
 
         exec {
             workingDir rootDir
-            commandLine 'bash', '-c', "rm -f '${apkStore}/mess-manager.apk' '${apkStore}/Mess Manager_com.mahmuduls.messmanager_'*.apk"
+            commandLine 'bash', '-c', "rm -f '${apkStore}/MessManager.apk' '${apkStore}/mess-manager.apk' '${apkStore}/Mess Manager_com.mahmuduls.messmanager_'*.apk"
             ignoreExitValue = true
         }
         exec {
