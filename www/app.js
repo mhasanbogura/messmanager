@@ -1989,7 +1989,7 @@ const App = {
 
     async shareMessCode() {
         if (!this.messCode) { this.toast('No mess code', 'error'); return; }
-        const joinUrl = `https://mhasanbogura.github.io/mess-manager-web/?join=${this.messCode}`;
+        const joinUrl = `https://mhasanbogura.github.io/messmanager/?join=${this.messCode}`;
         const _nm = this.messName || 'my mess';
         const text = `🏠 *You're Invited to Join Our Mess!*
 
@@ -5491,7 +5491,7 @@ https://u2l.ai/mess-manager
     copyUid() { if (this.currentUser) navigator.clipboard.writeText(this.currentUser.uid).then(() => this.toast('UID copied!', 'info')); },
     shareMessCode() {
         if (!this.messCode) return;
-        const joinUrl = `https://mhasanbogura.github.io/mess-manager-web/?join=${this.messCode}`;
+        const joinUrl = `https://mhasanbogura.github.io/messmanager/?join=${this.messCode}`;
         const _nm = this.messName || 'my mess';
         const text = `🏠 *You're Invited to Join Our Mess!*
 
