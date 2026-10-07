@@ -2004,7 +2004,7 @@ Download and install *Mess Manager*, then enter the Mess ID below.
 🔑 *Mess ID:* ${this.messCode}
 
 📥 *Download Mess Manager:*
-https://u2l.ai/mess-manager
+https://u2l.ai/MessManager
 
 *See you in ${_nm}! 🎉*`;
         if (window.Capacitor?.Plugins?.Share) {
@@ -4580,7 +4580,7 @@ https://u2l.ai/mess-manager
         this.toast(newLang === 'en' ? 'Language: English' : 'Language: বাংলা', 'info');
     },
     shareApp() {
-        const text = `Check out Mess Manager — A simple web-based mess management application designed to help users organize shared-mess information, manage members, track meals and expenses, and calculate rent, utility, cook, and other bills all in one place.\n\nDownload: https://u2l.ai/mess-manager`;
+        const text = `Check out Mess Manager — A simple web-based mess management application designed to help users organize shared-mess information, manage members, track meals and expenses, and calculate rent, utility, cook, and other bills all in one place.\n\nDownload: https://u2l.ai/MessManager`;
         if (window.Capacitor?.Plugins?.Share) {
             window.Capacitor.Plugins.Share.share({ title: 'Mess Manager', text }).catch(() => {});
         } else if (navigator.share) {
@@ -5506,7 +5506,7 @@ Download and install *Mess Manager*, then enter the Mess ID below.
 🔑 *Mess ID:* ${this.messCode}
 
 📥 *Download Mess Manager:*
-https://u2l.ai/mess-manager
+https://u2l.ai/MessManager
 
 *See you in ${_nm}! 🎉*`;
         if (window.Capacitor?.Plugins?.Share) {
