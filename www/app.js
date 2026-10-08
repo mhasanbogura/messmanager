@@ -5232,7 +5232,7 @@ https://u2l.ai/MessManager
                             <div class="am-top-items">${topUtilItems.map((it, i) => {
                                 const pct = it.total / topUtilItems[0].total * 100;
                                 const barColors = ['#FFB300','#FF8F00','#F57C00','#E65100','#D84315','#C62828','#AD1457','#6A1B9A'];
-                                return `<div class="am-item-row"><span class="am-item-name">${this.esc(it.name)} ${it.count > 1 ? '×' + it.count : ''}</span><div class="am-item-bar"><div class="am-item-fill" style="width:${pct}%;background:${barColors[i % barColors.length]}"></div></div><span class="am-item-cost">৳${this.fmtNum(it.total)}</span></div>`;
+                                return `<div class="am-item-row"><span class="am-item-name">${this.esc(it.name)}</span><div class="am-item-bar"><div class="am-item-fill" style="width:${pct}%;background:${barColors[i % barColors.length]}"></div></div><span class="am-item-cost">৳${this.fmtNum(it.total)}</span></div>`;
                             }).join('')}</div>
                         </div>` : ''}
                     </div>
