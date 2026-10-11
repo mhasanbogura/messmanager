@@ -1572,6 +1572,7 @@ select.input-sm { cursor: pointer; }
     .aprof-card { margin: 0 0 4px; }
     .amealhist-card { margin: 8px 0; }
     .bottom-nav { left: 0; right: 0; bottom: 0; border-radius: 0; border: none; }
+    .bottom-nav-items { flex: none; width: 100%; max-width: 700px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
 }
 
 @media (max-width: 360px) {
