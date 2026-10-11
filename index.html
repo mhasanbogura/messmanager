@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Mess Manager</title>
     <link rel="icon" type="image/png" href="app-icon.png?v=1.4.40">
-    <link rel="stylesheet" href="style.css?v=202610111326">
+    <link rel="stylesheet" href="style.css?v=202610111331">
     <link href="fonts/material-icons.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -626,10 +626,9 @@
                             <div class="aprof-text">
                                 <span class="aprof-label" data-lang-key="prof_language">Language</span>
                             </div>
-                            <div class="lang-toggle" id="prof-lang-toggle" data-lang="en" onclick="App.toggleLanguage()">
-                                <div class="lt-slider"></div>
-                                <span class="lt-label">BD</span>
-                                <span class="lt-label active">EN</span>
+                            <div class="lang-toggle" id="prof-lang-toggle">
+                                <span class="lt-seg" onclick="App.setLanguage('bn')">BD</span>
+                                <span class="lt-seg active" onclick="App.setLanguage('en')">EN</span>
                             </div>
                         </div>
                         </div>
@@ -724,6 +723,6 @@
     <script src="firebase-auth-compat.js" defer></script>
     <script src="firebase-database-compat.js" defer></script>
     <script src="firebase-config.js" defer></script>
-    <script src="app.js?v=202610111326" defer></script>
+    <script src="app.js?v=202610111331" defer></script>
 </body>
 </html>

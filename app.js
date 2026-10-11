@@ -4349,8 +4349,7 @@ https://u2l.ai/MessManager
         const toggle = document.getElementById('prof-lang-toggle');
         if (toggle) {
             const lang = localStorage.getItem('mess_lang') || 'en';
-            toggle.dataset.lang = lang;
-            const labels = toggle.querySelectorAll('.lt-label');
+            const labels = toggle.querySelectorAll('.lt-seg');
             if (labels[0]) labels[0].classList.toggle('active', lang === 'bn');
             if (labels[1]) labels[1].classList.toggle('active', lang === 'en');
         }
@@ -4566,19 +4565,17 @@ https://u2l.ai/MessManager
             this.toast('Saved offline — will sync when connected', 'info');
         }
     },
-    toggleLanguage() {
-        const lang = localStorage.getItem('mess_lang') || 'en';
-        const newLang = lang === 'en' ? 'bn' : 'en';
-        localStorage.setItem('mess_lang', newLang);
+    setLanguage(lang) {
+        if (lang !== 'bn' && lang !== 'en') return;
+        localStorage.setItem('mess_lang', lang);
         const toggle = document.getElementById('prof-lang-toggle');
         if (toggle) {
-            toggle.dataset.lang = newLang;
-            const labels = toggle.querySelectorAll('.lt-label');
-            if (labels[0]) labels[0].classList.toggle('active', newLang === 'bn');
-            if (labels[1]) labels[1].classList.toggle('active', newLang === 'en');
+            const labels = toggle.querySelectorAll('.lt-seg');
+            if (labels[0]) labels[0].classList.toggle('active', lang === 'bn');
+            if (labels[1]) labels[1].classList.toggle('active', lang === 'en');
         }
         this.applyLanguage();
-        this.toast(newLang === 'en' ? 'Language: English' : 'Language: বাংলা', 'info');
+        this.toast(lang === 'en' ? 'Language: English' : 'Language: বাংলা', 'info');
     },
     shareApp() {
         const text = `Check out Mess Manager — A simple web-based mess management application designed to help users organize shared-mess information, manage members, track meals and expenses, and calculate rent, utility, cook, and other bills all in one place.\n\nDownload: https://u2l.ai/MessManager`;
