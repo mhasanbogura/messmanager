@@ -1571,7 +1571,7 @@ select.input-sm { cursor: pointer; }
     .abazar-day-card { margin: 0 0 10px; }
     .aprof-card { margin: 0 0 4px; }
     .amealhist-card { margin: 8px 0; }
-    .bottom-nav { left: calc(50% - 326px); right: calc(50% - 326px); bottom: calc(12px + var(--sab)); border-radius: 16px; border: none; }
+    .bottom-nav { left: 0; right: 0; bottom: 0; border-radius: 0; border: none; }
 }
 
 @media (max-width: 360px) {
@@ -3401,7 +3401,7 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .abn-item { background: #0d0d0d; border-color: #1a1a1a; }
 [data-theme="oled"] .abn-bottom { background: #0d0d0d; border-color: #1a1a1a; }
 /* Bottom nav */
-[data-theme="oled"] .bottom-nav { background: #0d0d0d; border-color: #1a1a1a; }
+[data-theme="oled"] .bottom-nav { background: var(--bg); border: none; }
 /* Add meal */
 [data-theme="oled"] .aam-card { background: #0d0d0d; border-color: #1a1a1a; }
 [data-theme="oled"] .aam-card label { color: #ccc; }
@@ -3609,7 +3609,7 @@ img, canvas { max-width: 100%; }
     .bz-item-row > .bz-input-wrap { flex: 2.5 1 0%; }
     .bz-item-row > .bz-qty-wrap { flex: 1.5 1 0%; }
     .bz-item-row > .bz-cost-wrap { flex: 2 1 0%; }
-    .bottom-nav { left: 12px; right: 12px; bottom: 0; padding-bottom: calc(6px + var(--sab)); border-radius: 16px; border: 1px solid var(--glass-border); }
+    .bottom-nav { left: 0; right: 0; bottom: 0; border-radius: 0; border: none; }
     .abazar-fab, .anotice-fab { left: 12px; right: 12px; border-radius: 14px; justify-content: center; padding: 14px; }
     #app-screen .aam-footer { left: 12px; right: 12px; background: transparent; padding: 0; }
     #app-screen .abn-bottom { left: 12px; right: 12px; bottom: calc(12px + var(--sab)); border-radius: 16px; border: 1px solid var(--border); }
