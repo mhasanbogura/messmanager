@@ -4591,9 +4591,7 @@ https://u2l.ai/MessManager
         }
     },
     getApp() {
-        const url = 'https://u2l.ai/MessManager';
-        const w = window.open(url, '_blank', 'noopener');
-        if (!w) window.location.href = url;
+        window.location.href = 'https://u2l.ai/MessManager';
     },
     _applyPlatformRows() {
         const native = !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
