@@ -75,7 +75,7 @@ task release {
         def tagName = "v${v}"
         def rootDir = project.projectDir.parentFile
         def ghBin = new File(System.getProperty("user.home"), ".local/bin/gh").absolutePath
-        def apkStore = "/home/mhasanbogura/Google Drive/mahmudulhasandhk70/Apk Store/Android"
+        def apkStore = "/home/mhasanbogura/Google Drive/mahmudulhasandhk70/App Store/Android"
         def storeApkName = "Mess Manager_com.mahmuduls.messmanager_v${v}_build_${b}.apk"
 
         println "Release v${v} build ${b}..."
