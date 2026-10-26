@@ -130,6 +130,27 @@ task release {
 android {
     namespace "com.mahmuduls.messmanager"
     compileSdk rootProject.ext.compileSdkVersion
+
+    // Fixed signing keystore: every build MUST sign with the same key so that
+    // Android accepts new APKs as updates over previously installed versions.
+    // The keystore file lives at android/keystore/debug.keystore (synced via
+    // Google Drive, gitignored). Copy ~/.android/debug.keystore from the
+    // original build machine if it is missing.
+    signingConfigs {
+        fixed {
+            def ksFile = rootProject.file('keystore/debug.keystore')
+            if (!ksFile.exists()) {
+                throw new GradleException(
+                    "Fixed signing keystore missing: ${ksFile}\n" +
+                    "This project must always sign with the same key. " +
+                    "Copy the original debug.keystore there before building.")
+            }
+            storeFile ksFile
+            storePassword project.findProperty('fixedKsStorePassword') ?: 'android'
+            keyAlias project.findProperty('fixedKsKeyAlias') ?: 'androiddebugkey'
+            keyPassword project.findProperty('fixedKsKeyPassword') ?: 'android'
+        }
+    }
     defaultConfig {
         applicationId "com.mahmuduls.messmanager"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -142,7 +163,11 @@ android {
         }
     }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.fixed
+        }
         release {
+            signingConfig signingConfigs.fixed
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
