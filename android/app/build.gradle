@@ -56,9 +56,54 @@ task stampVersion {
     }
 }
 
+// Resolve the canonical signing keystore: the App Store project's
+// debug.keystore (shared signing identity across all apps, synced between
+// machines via Google Drive). Override with -PcanonicalKeystore=<path>.
+def canonicalKeystoreSource() {
+    def candidates = []
+    def override = project.findProperty('canonicalKeystore')
+    if (override) candidates << override
+    candidates += [
+        'C:/Google Drive/mahmudulhasandhk70/OpenCode/App Store/debug.keystore',
+        '/home/mhasanbogura/Google Drive/mahmudulhasandhk70/OpenCode/App Store/debug.keystore'
+    ]
+    candidates.collect { file(it) }.find { it.exists() }
+}
+
+// Gradle task: keeps android/keystore/debug.keystore identical to the
+// canonical App Store debug keystore. Runs automatically before every build.
+task syncKeystore {
+    group = 'signing'
+    description = 'Syncs android/keystore/debug.keystore from the canonical App Store debug.keystore'
+    doLast {
+        def local = rootProject.file('keystore/debug.keystore')
+        def source = canonicalKeystoreSource()
+        if (source != null) {
+            def differs = !local.exists() || !java.util.Arrays.equals(
+                java.nio.file.Files.readAllBytes(source.toPath()),
+                java.nio.file.Files.readAllBytes(local.toPath()))
+            if (differs) {
+                local.parentFile.mkdirs()
+                java.nio.file.Files.copy(source.toPath(), local.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                println "Signing keystore synced from canonical source: ${source}"
+            } else {
+                println "Signing keystore already matches canonical source"
+            }
+        } else if (!local.exists()) {
+            throw new GradleException(
+                "No signing keystore available: canonical App Store debug.keystore not found " +
+                "and ${local} does not exist.")
+        } else {
+            println "WARNING: canonical App Store keystore not found; using existing ${local}"
+        }
+    }
+}
+
 project.afterEvaluate {
     tasks.findByName('assembleDebug')?.dependsOn('stampVersion')
     tasks.findByName('mergeDebugAssets')?.dependsOn('stampVersion')
+    tasks.findByName('preBuild')?.dependsOn('syncKeystore')
 }
 
 task release {
@@ -133,19 +178,27 @@ android {
 
     // Fixed signing keystore: every build MUST sign with the same key so that
     // Android accepts new APKs as updates over previously installed versions.
-    // The keystore file lives at android/keystore/debug.keystore (synced via
-    // Google Drive, gitignored). Copy ~/.android/debug.keystore from the
-    // original build machine if it is missing.
+    // Canonical key: the App Store project's debug.keystore (shared identity
+    // across all apps, synced via Google Drive). The syncKeystore task copies
+    // it to android/keystore/debug.keystore before every build; the build
+    // fails if neither the source nor the local copy exists.
     signingConfigs {
         fixed {
-            def ksFile = rootProject.file('keystore/debug.keystore')
-            if (!ksFile.exists()) {
-                throw new GradleException(
-                    "Fixed signing keystore missing: ${ksFile}\n" +
-                    "This project must always sign with the same key. " +
-                    "Copy the original debug.keystore there before building.")
+            def localKs = rootProject.file('keystore/debug.keystore')
+            if (!localKs.exists()) {
+                def source = canonicalKeystoreSource()
+                if (source != null) {
+                    localKs.parentFile.mkdirs()
+                    java.nio.file.Files.copy(source.toPath(), localKs.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                } else {
+                    throw new GradleException(
+                        "Fixed signing keystore missing: ${localKs}\n" +
+                        "and no canonical source (App Store debug.keystore) found. " +
+                        "Copy the App Store keystore to android/keystore/debug.keystore before building.")
+                }
             }
-            storeFile ksFile
+            storeFile localKs
             storePassword project.findProperty('fixedKsStorePassword') ?: 'android'
             keyAlias project.findProperty('fixedKsKeyAlias') ?: 'androiddebugkey'
             keyPassword project.findProperty('fixedKsKeyPassword') ?: 'android'

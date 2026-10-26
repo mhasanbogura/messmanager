@@ -1,3 +1,28 @@
+// Heal local.properties sdk.dir when it points to a nonexistent SDK. This
+// happens when Google Drive syncs another machine's local.properties over
+// ours (the file is gitignored but Drive-synced). Prefer ANDROID_HOME, then
+// this machine's standard SDK locations.
+def localPropsFile = new File(settingsDir, 'local.properties')
+def sdkDir = null
+if (localPropsFile.exists()) {
+    def props = new Properties()
+    localPropsFile.withInputStream { props.load(it) }
+    sdkDir = props.getProperty('sdk.dir')
+}
+if (sdkDir == null || !new File(sdkDir).exists()) {
+    def candidates = [
+        System.getenv('ANDROID_HOME'),
+        System.getenv('ANDROID_SDK_ROOT'),
+        new File(System.getProperty('user.home'), 'AppData/Local/Android/Sdk').absolutePath,
+        new File(System.getProperty('user.home'), '.local/share/android-sdk').absolutePath
+    ]
+    def healed = candidates.find { it && new File(it).exists() }
+    if (healed) {
+        localPropsFile.text = "sdk.dir=${healed.replace('\\', '/')}\n"
+        println "local.properties sdk.dir was stale (${sdkDir}) -> healed to ${healed}"
+    }
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
