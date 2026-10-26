@@ -21,7 +21,7 @@
     "GoogleAuth": {
       "scopes": "profile,email",
       "clientId": "714155755588-psvicqsasbnb6j2flmfqg9ttd60h9o3a.apps.googleusercontent.com",
-      "androidClientId": "714155755588-ogc70d2vqho0342u5njur46uqpo8envr.apps.googleusercontent.com",
+      "androidClientId": "714155755588-70j4r7tjjvarh62rougorhnjq2bjklbe.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }
   }
