@@ -4632,11 +4632,10 @@ https://u2l.ai/MessManager
     },
     _applyPlatformRows() {
         const native = !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+        console.log("Native platform:", native);
         const shareRow = document.getElementById('row-share-app');
-        const getRow = document.getElementById('row-get-app');
         const updateRow = document.getElementById('row-update-app');
         if (shareRow) shareRow.style.display = native ? '' : 'none';
-        if (getRow) getRow.style.display = native ? 'none' : '';
         if (updateRow) updateRow.style.display = native ? '' : 'none';
     },
     _driveFiles: {
