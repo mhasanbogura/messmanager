@@ -4587,15 +4587,57 @@ https://u2l.ai/MessManager
             navigator.clipboard?.writeText(text).then(() => this.toast('Copied!', 'success'));
         }
     },
-    getApp() {
-        window.location.href = 'https://u2l.ai/MessManager';
+    async checkUpdate() {
+        // Folder ID where APKs are stored
+        const folderId = '1PBrhSIvDk0QrgNS6XeTeA1RDLFPeTqKV'; // Update to the correct ID
+        const apiKey = 'AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8';
+        const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&key=${apiKey}`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const files = data.files || [];
+            
+            // Find latest APK
+            let latestApk = null;
+            let maxBuild = 622; // Current build
+            
+            files.forEach(file => {
+                if (file.name.endsWith('.apk')) {
+                    const match = file.name.match(/build_(\d+)/);
+                    if (match) {
+                        const build = parseInt(match[1]);
+                        if (build > maxBuild) {
+                            maxBuild = build;
+                            latestApk = file;
+                        }
+                    }
+                }
+            });
+            
+            if (latestApk) {
+                if (confirm(`New version found (Build ${maxBuild}). Update now?`)) {
+                    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${latestApk.id}?alt=media&key=${apiKey}`;
+                    if (window.AndroidBridge) {
+                        window.AndroidBridge.downloadAndInstall(downloadUrl);
+                    }
+                }
+            } else {
+                alert("No updates available.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error checking for updates.");
+        }
     },
     _applyPlatformRows() {
         const native = !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
         const shareRow = document.getElementById('row-share-app');
         const getRow = document.getElementById('row-get-app');
+        const updateRow = document.getElementById('row-update-app');
         if (shareRow) shareRow.style.display = native ? '' : 'none';
         if (getRow) getRow.style.display = native ? 'none' : '';
+        if (updateRow) updateRow.style.display = native ? '' : 'none';
     },
     _driveFiles: {
         about: { url: 'https://www.googleapis.com/drive/v3/files/1s45exjbMZhDk-Yt7oHSYjO6P_FiPs3YY?alt=media&key=AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8', key: 'cache_about_md' },
