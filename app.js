@@ -824,8 +824,25 @@ const App = {
             }
         }
         const ids = Object.keys(data);
-        if (ids.length === 1) { this.enterMess(ids[0], { skipMemberCheck: true }); return; }
+        // Enforce one mess per user: if several exist, keep the current/most recent
+        // and remove the rest from both the local cache and the database.
         if (ids.length > 1) {
+            let keep = this.messId && data[this.messId] ? this.messId : null;
+            if (!keep) {
+                keep = ids.slice().sort((a, b) => ((data[b] && data[b].joinedAt) || 0) - ((data[a] && data[a].joinedAt) || 0))[0];
+            }
+            const drop = {};
+            ids.forEach(k => {
+                if (k === keep) return;
+                delete data[k];
+                drop[`users/${this.currentUser.uid}/messes/${k}`] = null;
+            });
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            if (!offline) { db.ref().update(drop).catch(() => {}); db.ref(`users/${this.currentUser.uid}/currentMess`).set(keep).catch(() => {}); }
+        }
+        const finalIds = Object.keys(data);
+        if (finalIds.length === 1) { this.enterMess(finalIds[0]); return; }
+        if (finalIds.length > 1) {
             this.showScreen('mess-select-screen');
             const div = document.getElementById('my-messes-list');
             let html = '<div class="card-body">';
@@ -843,7 +860,7 @@ const App = {
                         } catch (e) {}
                     }
                 }
-                html += `<div class="mess-item" onclick="App.enterMess('${mid}', {skipMemberCheck:true})">
+                html += `<div class="mess-item" onclick="App.enterMess('${mid}')">
                     <div class="mess-item-icon"><span class="material-icons-round">home</span></div>
                     <div class="mess-item-info"><h4>${this.esc(s.messName || 'Unnamed')}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
                     <span class="material-icons-round" style="color:var(--text-secondary)">chevron_right</span>
@@ -987,15 +1004,24 @@ const App = {
         try {
             if (!offline) {
                 if (!opts || !opts.skipMemberCheck) {
-                    const memberSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
-                    if (!memberSnap.exists()) {
+                    let memberSnap = null;
+                    let denied = false;
+                    try {
+                        memberSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
+                    } catch (e2) {
+                        denied = e2 && e2.code === 'PERMISSION_DENIED';
+                    }
+                    if (denied || (memberSnap && !memberSnap.exists())) {
                         try { await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).remove(); } catch (e2) {}
+                        try { await db.ref(`users/${this.currentUser.uid}/currentMess`).remove(); } catch (e2) {}
                         this._userMessesCacheUpdate(mid, null);
                         this.toast('You are no longer a member of this mess', 'error');
                         this.messId = null;
                         return this.loadMyMesses();
                     }
                 }
+                // Remember the single active mess for this user.
+                db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid).catch(() => {});
                 let cachedSettings = null;
                 try { cachedSettings = JSON.parse(localStorage.getItem(settingsCacheKey) || 'null'); } catch (e2) {}
                 if (cachedSettings) {
@@ -1145,6 +1171,7 @@ const App = {
             updates[`messes/${mid}/members/${uid}`] = null;
             updates[`messes/${mid}/permissions/${uid}`] = null;
             updates[`users/${uid}/messes/${mid}`] = null;
+            updates[`users/${uid}/currentMess`] = null;
             await db.ref().update(updates);
             this._userMessesCacheUpdate(mid, null);
             if (stepDown) {
@@ -1186,6 +1213,7 @@ const App = {
                 members: { [this.currentUser.uid]: { name: this.currentUser.displayName || 'Admin', email: this.currentUser.email, role: 'admin', joinedAt: Date.now() } }
             });
             await Promise.race([write, timeout]);
+            await Promise.race([db.ref(`users/${this.currentUser.uid}/currentMess`).set(newKey), timeout]);
             await Promise.race([db.ref(`users/${this.currentUser.uid}/messes/${newKey}`).set({ role: 'admin', joinedAt: Date.now() }), timeout]);
             db.ref(`messCodes/${code}`).set(newKey).catch(() => {});
             this._userMessesCacheUpdate(newKey, 'admin');
@@ -1232,6 +1260,7 @@ const App = {
                     // Direct join: activate any old pending request immediately.
                     try { await db.ref(`messes/${mid}/members/${this.currentUser.uid}/status`).set('active'); } catch (e2) {}
                 }
+                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
                 await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: ed.role || 'member', joinedAt: ed.joinedAt || Date.now() });
                 this._userMessesCacheUpdate(mid, ed.role || 'member');
                 this.toast('Joined!', 'success');
@@ -1242,6 +1271,7 @@ const App = {
             }
             try {
                 await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'active', joinedAt: Date.now() });
+                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
                 await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: Date.now() });
             } catch (err) {
                 this.toast((err && err.code === 'PERMISSION_DENIED') ? 'Mess not found' : 'Error: ' + (err && err.message ? err.message : err), 'error');
@@ -1678,13 +1708,22 @@ const App = {
         try {
             const mSnap = await db.ref(`messes/${messId}/members`).once('value');
             const members = mSnap.val() || {};
+            const myUid = this.currentUser.uid;
             const updates = {};
-            Object.keys(members).forEach(uid => {
-                if (!uid.startsWith('member_')) updates[`users/${uid}/messes/${messId}`] = null;
-            });
-            if (this.messCode) updates[`messCodes/${this.messCode}`] = null;
             updates[`messes/${messId}`] = null;
+            if (this.messCode) updates[`messCodes/${this.messCode}`] = null;
+            updates[`users/${myUid}/messes/${messId}`] = null;
+            updates[`users/${myUid}/currentMess`] = null;
             await db.ref().update(updates);
+            // Best effort: clean the other members' indexes. Their own app also
+            // self-heals when it notices the mess/membership is gone.
+            Object.keys(members).forEach(uid => {
+                if (uid === myUid || uid.startsWith('member_')) return;
+                db.ref(`users/${uid}/messes/${messId}`).remove().catch(() => {});
+                db.ref(`users/${uid}/currentMess`).once('value').then(s => {
+                    if (s.val() === messId) return db.ref(`users/${uid}/currentMess`).remove();
+                }).catch(() => {});
+            });
             return true;
         } catch (e) { console.error('deleteMessFully error:', e); return false; }
     },
