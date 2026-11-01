@@ -782,11 +782,32 @@ const App = {
         catch (e) { this.toast(e.message, 'error'); }
     },
 
+    _validMid(mid) {
+        return typeof mid === 'string' && mid.length > 0 && mid !== 'undefined' && mid !== 'null';
+    },
+
     async loadMyMesses() {
         if (!this.currentUser) return;
         const cacheKey = `user_messes_${this.currentUser.uid}`;
         let data = {};
         try { data = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch (e) {}
+        // Drop corrupt mess ids (e.g. the literal "undefined" from an old bug).
+        let purged = false;
+        Object.keys(data).forEach(k => {
+            if (!this._validMid(k)) { delete data[k]; purged = true; }
+        });
+        if (purged) {
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            try {
+                if (navigator.onLine) {
+                    db.ref(`users/${this.currentUser.uid}/messes`).once('value').then(snap => {
+                        const bad = {};
+                        Object.keys(snap.val() || {}).forEach(k => { if (!this._validMid(k)) bad[`users/${this.currentUser.uid}/messes/${k}`] = null; });
+                        if (Object.keys(bad).length) db.ref().update(bad).catch(() => {});
+                    }).catch(() => {});
+                }
+            } catch (e) {}
+        }
         const offline = !navigator.onLine;
         const hasCache = Object.keys(data).length > 0;
         if (!offline) {
@@ -844,7 +865,7 @@ const App = {
     },
 
     _userMessesCacheUpdate(mid, role) {
-        if (!this.currentUser || !mid) return;
+        if (!this.currentUser || !this._validMid(mid)) return;
         try {
             const key = `user_messes_${this.currentUser.uid}`;
             const c = JSON.parse(localStorage.getItem(key) || '{}');
@@ -957,6 +978,12 @@ const App = {
     },
 
     async enterMess(mid, opts) {
+        if (!this._validMid(mid)) {
+            try { localStorage.removeItem('current_mess_id'); } catch (e) {}
+            this.messId = null;
+            this.toast('Invalid mess. Please create or join a mess.', 'error');
+            return this.loadMyMesses();
+        }
         this.messId = mid;
         this.messCode = null;
         const settingsCacheKey = `mess_settings_${mid}`;
@@ -1154,6 +1181,11 @@ const App = {
             const code = this.genCode(6);
             const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Connection timeout')), 15000));
             const newKey = db.ref('messes').push().key;
+            if (!newKey || typeof newKey !== 'string' || newKey === 'undefined' || newKey === 'null') {
+                this.toast('Error: could not generate mess id. Please try again.', 'error');
+                btn.textContent = 'Create Mess'; btn.disabled = false;
+                return;
+            }
             const write = db.ref(`messes/${newKey}`).set({
                 settings: { messName: name, messCode: code, owner: this.currentUser.uid, createdAt: Date.now() },
                 members: { [this.currentUser.uid]: { name: this.currentUser.displayName || 'Admin', email: this.currentUser.email, role: 'admin', joinedAt: Date.now() } }
@@ -1196,7 +1228,8 @@ const App = {
                     if (snap.exists()) snap.forEach(s => { if (!mid) mid = s.key; });
                 } catch (e) { /* index missing and legacy query denied */ }
             }
-            if (!mid) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            if (!mid || !this._validMid(String(mid))) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            mid = String(mid);
             const existingSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
             if (existingSnap.exists()) {
                 const ed = existingSnap.val() || {};
