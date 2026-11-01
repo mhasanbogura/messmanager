@@ -791,23 +791,6 @@ const App = {
         const cacheKey = `user_messes_${this.currentUser.uid}`;
         let data = {};
         try { data = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch (e) {}
-        // Drop corrupt mess ids (e.g. the literal "undefined" from an old bug).
-        let purged = false;
-        Object.keys(data).forEach(k => {
-            if (!this._validMid(k)) { delete data[k]; purged = true; }
-        });
-        if (purged) {
-            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
-            try {
-                if (navigator.onLine) {
-                    db.ref(`users/${this.currentUser.uid}/messes`).once('value').then(snap => {
-                        const bad = {};
-                        Object.keys(snap.val() || {}).forEach(k => { if (!this._validMid(k)) bad[`users/${this.currentUser.uid}/messes/${k}`] = null; });
-                        if (Object.keys(bad).length) db.ref().update(bad).catch(() => {});
-                    }).catch(() => {});
-                }
-            } catch (e) {}
-        }
         const offline = !navigator.onLine;
         const hasCache = Object.keys(data).length > 0;
         if (!offline) {
@@ -826,6 +809,18 @@ const App = {
                     data = snap.val() || {};
                     try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
                 } catch (e) {}
+            }
+        }
+        // Sanitize: drop corrupt mess ids (e.g. the literal "undefined") whether they
+        // came from the local cache or fresh from the database, and clean the DB entry.
+        const badIds = Object.keys(data).filter(k => !this._validMid(k));
+        if (badIds.length) {
+            badIds.forEach(k => { delete data[k]; });
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            if (!offline) {
+                const patch = {};
+                badIds.forEach(k => { patch[`users/${this.currentUser.uid}/messes/${k}`] = null; });
+                db.ref().update(patch).catch(() => {});
             }
         }
         const ids = Object.keys(data);
