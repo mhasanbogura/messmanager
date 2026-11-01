@@ -2387,9 +2387,14 @@ https://u2l.ai/MessManager
             const m = mSnap.val() || {};
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/status`] = 'active';
-            updates[`users/${uid}/messes/${this.messId}`] = { role: 'member', joinedAt: m.joinedAt || Date.now() };
                 updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: false, mealEntry: false, mealEdit: false, togglePerms: false, manage: false };
             await db.ref().update(updates);
+            // Give the member their mess index so they land straight in the app.
+            // Best effort: older/stricter rules may block an admin from writing
+            // another user's index, so approval must not fail because of it.
+            try {
+                await db.ref(`users/${uid}/messes/${this.messId}`).set({ role: 'member', joinedAt: m.joinedAt || Date.now() });
+            } catch (e) { /* member can still re-join with the mess code */ }
             this.toast(`${m.name || 'Member'} approved!`, 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
@@ -2404,8 +2409,8 @@ https://u2l.ai/MessManager
             if (!confirm(`Reject ${m.name || 'this member'}?`)) return;
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}`] = null;
-            updates[`users/${uid}/messes/${this.messId}`] = null;
             await db.ref().update(updates);
+            try { await db.ref(`users/${uid}/messes/${this.messId}`).remove(); } catch (e) { /* best effort */ }
             this.toast('Request rejected', 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
