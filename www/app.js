@@ -811,6 +811,28 @@ const App = {
                 } catch (e) {}
             }
         }
+        // Verify each entry is a real membership; drop phantom entries (e.g. a mess
+        // that was deleted, or an old index left over from a previous bug) so they
+        // can never block joining/creating a mess.
+        if (!offline && Object.keys(data).length) {
+            const stale = [];
+            for (const mid of Object.keys(data)) {
+                try {
+                    const ms = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
+                    if (!ms.exists()) stale.push(mid);
+                } catch (e) {
+                    if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
+                }
+            }
+            if (stale.length) {
+                stale.forEach(mid => { delete data[mid]; this._userMessesCacheUpdate(mid, null); });
+                const patch = {};
+                stale.forEach(mid => { patch[`users/${this.currentUser.uid}/messes/${mid}`] = null; });
+                patch[`users/${this.currentUser.uid}/currentMess`] = Object.keys(data)[0] || null;
+                db.ref().update(patch).catch(() => {});
+                try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            }
+        }
         // Sanitize: drop corrupt mess ids (e.g. the literal "undefined") whether they
         // came from the local cache or fresh from the database, and clean the DB entry.
         const badIds = Object.keys(data).filter(k => !this._validMid(k));
@@ -846,7 +868,7 @@ const App = {
             this.showScreen('mess-select-screen');
             const div = document.getElementById('my-messes-list');
             let html = '<div class="card-body">';
-            for (const mid of ids) {
+            for (const mid of finalIds) {
                 let s = {};
                 try { s = JSON.parse(localStorage.getItem(`mess_settings_${mid}`) || '{}'); } catch (e) {}
                 if (!offline) {
@@ -863,6 +885,7 @@ const App = {
                 html += `<div class="mess-item" onclick="App.enterMess('${mid}')">
                     <div class="mess-item-icon"><span class="material-icons-round">home</span></div>
                     <div class="mess-item-info"><h4>${this.esc(s.messName || 'Unnamed')}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
+                    <button class="mess-item-leave" title="${this._currentLang === 'bn' ? 'মেস ছাড়ুন' : 'Leave mess'}" onclick="event.stopPropagation();App.leaveFromSelect('${mid}')"><span class="material-icons-round">logout</span></button>
                     <span class="material-icons-round" style="color:var(--text-secondary)">chevron_right</span>
                 </div>`;
             }
@@ -885,6 +908,83 @@ const App = {
             else delete c[mid];
             localStorage.setItem(key, JSON.stringify(c));
         } catch (e) {}
+    },
+
+    // True only if the user currently belongs to a mess that still exists and has
+    // a member record for them. Phantom/leftover index entries are purged.
+    async _hasValidMembership() {
+        if (!this.currentUser) return false;
+        const uid = this.currentUser.uid;
+        let data = {};
+        try { data = (await db.ref(`users/${uid}/messes`).once('value')).val() || {}; } catch (e) { return false; }
+        const ids = Object.keys(data).filter(k => this._validMid(k));
+        if (!ids.length) return false;
+        const stale = [];
+        for (const mid of ids) {
+            try {
+                const s = await db.ref(`messes/${mid}/members/${uid}`).once('value');
+                if (!s.exists()) stale.push(mid);
+            } catch (e) {
+                if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
+            }
+        }
+        if (stale.length) {
+            const patch = {};
+            stale.forEach(mid => { patch[`users/${uid}/messes/${mid}`] = null; this._userMessesCacheUpdate(mid, null); });
+            if (stale.length === ids.length) patch[`users/${uid}/currentMess`] = null;
+            db.ref().update(patch).catch(() => {});
+        }
+        return stale.length < ids.length;
+    },
+
+    leaveFromSelect(mid) {
+        if (!this.currentUser || !this._validMid(mid)) return;
+        const bn = this._currentLang === 'bn';
+        this.showConfirm(
+            bn ? 'মেস ছাড়ুন' : 'Leave Mess',
+            bn ? 'আপনি কি এই মেস ছাড়তে চান?' : 'Are you sure you want to leave this mess?',
+            ok => { if (ok) this._leaveFromSelect(mid); }
+        );
+    },
+
+    async _leaveFromSelect(mid) {
+        if (!this.currentUser) return;
+        const uid = this.currentUser.uid;
+        let isMember = false;
+        try {
+            const m = await db.ref(`messes/${mid}/members/${uid}`).once('value');
+            isMember = m.exists();
+        } catch (e) { isMember = false; }
+        if (isMember) {
+            // Reuse the normal leave flow (manager step-down, last-member delete).
+            let role = 'member';
+            try { role = (await db.ref(`messes/${mid}/members/${uid}/role`).once('value')).val() || 'member'; } catch (e) {}
+            this.messId = mid;
+            this.userRole = role;
+            try {
+                const cached = JSON.parse(localStorage.getItem(`mess_settings_${mid}`) || 'null');
+                this.messCode = cached && cached.messCode ? cached.messCode : null;
+                this.messName = cached && cached.messName ? cached.messName : null;
+            } catch (e) { this.messCode = null; this.messName = null; }
+            await this._doLeaveMess(role === 'admin');
+            return;
+        }
+        // Not a real member — just remove the stale index entry.
+        try {
+            const patch = {};
+            patch[`users/${uid}/messes/${mid}`] = null;
+            const cm = await db.ref(`users/${uid}/currentMess`).once('value');
+            if (cm.val() === mid) patch[`users/${uid}/currentMess`] = null;
+            await db.ref().update(patch);
+        } catch (e) { /* best effort */ }
+        this._userMessesCacheUpdate(mid, null);
+        try {
+            localStorage.removeItem(`mess_settings_${mid}`);
+            localStorage.removeItem(`mess_role_${mid}`);
+        } catch (e) {}
+        this.toast(this._currentLang === 'bn' ? 'মেস ছাড়া হয়েছে' : 'Left mess', 'success');
+        this.messId = null; this.messCode = null; this.messName = null;
+        this.loadMyMesses();
     },
 
     _setupMessSelectPullRefresh() {
@@ -1188,14 +1288,11 @@ const App = {
         const name = document.getElementById('create-mess-name').value.trim();
         if (!name) { this.toast('Enter mess name', 'error'); return; }
 
-        // Prevent creating multiple messes at once
-        try {
-            const myMessesSnap = await db.ref(`users/${this.currentUser.uid}/messes`).once('value');
-            if (myMessesSnap.exists() && Object.keys(myMessesSnap.val() || {}).length > 0) {
-                this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
-                return;
-            }
-        } catch (e) { /* DB rules will enforce */ }
+        // Prevent joining/creating a second mess (phantom entries are ignored/cleaned)
+        if (await this._hasValidMembership()) {
+            this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+            return;
+        }
 
         const btn = document.getElementById('create-mess-btn');
         btn.textContent = 'Creating...'; btn.disabled = true;
@@ -1228,14 +1325,11 @@ const App = {
         const code = document.getElementById('join-mess-code').value.trim().toUpperCase();
         if (!code || code.length !== 6) { this.toast('Enter 6-digit code', 'error'); return; }
 
-        // Prevent joining multiple messes at once
-        try {
-            const myMessesSnap = await db.ref(`users/${this.currentUser.uid}/messes`).once('value');
-            if (myMessesSnap.exists() && Object.keys(myMessesSnap.val() || {}).length > 0) {
-                this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
-                return;
-            }
-        } catch (e) { /* DB rules will enforce */ }
+        // Prevent joining/creating a second mess (phantom entries are ignored/cleaned)
+        if (await this._hasValidMembership()) {
+            this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+            return;
+        }
 
         const btn = document.getElementById('join-mess-btn');
         btn.textContent = 'Joining...'; btn.disabled = true;
