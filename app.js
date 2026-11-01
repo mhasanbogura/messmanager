@@ -186,7 +186,7 @@ const App = {
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Log out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
-        prof_version:'Version 1.5.4 (build 634)',
+        prof_version:'Version 1.5.15 (build 667)',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
         // Select Month
@@ -358,7 +358,7 @@ const App = {
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'লগ আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
-            prof_version:'ভার্সন 1.5.4 (বিল্ড 634)',
+            prof_version:'ভার্সন 1.5.15 (বিল্ড 667)',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
             // Select Month
@@ -458,7 +458,6 @@ const App = {
                 ]);
             };
             firebase.database.Reference.prototype.set = _writeTimeout(_origSet);
-            firebase.database.Reference.prototype.push = _writeTimeout(_origPush);
             firebase.database.Reference.prototype.remove = _writeTimeout(_origRemove);
             firebase.database.Reference.prototype.update = _writeTimeout(_origUpdate);
         } catch (e) {}
@@ -1139,6 +1138,16 @@ const App = {
     async createMess() {
         const name = document.getElementById('create-mess-name').value.trim();
         if (!name) { this.toast('Enter mess name', 'error'); return; }
+
+        // Prevent creating multiple messes at once
+        try {
+            const myMessesSnap = await db.ref(`users/${this.currentUser.uid}/messes`).once('value');
+            if (myMessesSnap.exists() && Object.keys(myMessesSnap.val() || {}).length > 0) {
+                this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+                return;
+            }
+        } catch (e) { /* DB rules will enforce */ }
+
         const btn = document.getElementById('create-mess-btn');
         btn.textContent = 'Creating...'; btn.disabled = true;
         try {
@@ -1163,6 +1172,16 @@ const App = {
     async joinMess() {
         const code = document.getElementById('join-mess-code').value.trim().toUpperCase();
         if (!code || code.length !== 6) { this.toast('Enter 6-digit code', 'error'); return; }
+
+        // Prevent joining multiple messes at once
+        try {
+            const myMessesSnap = await db.ref(`users/${this.currentUser.uid}/messes`).once('value');
+            if (myMessesSnap.exists() && Object.keys(myMessesSnap.val() || {}).length > 0) {
+                this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+                return;
+            }
+        } catch (e) { /* DB rules will enforce */ }
+
         const btn = document.getElementById('join-mess-btn');
         btn.textContent = 'Joining...'; btn.disabled = true;
         try {
@@ -4316,6 +4335,22 @@ https://u2l.ai/MessManager
     },
 
     async loadProfile() {
+        // Ensure "Update App" button exists in the DOM
+        const moreSection = Array.from(document.querySelectorAll('.aprof-section')).find(s => s.querySelector('[data-lang-key="prof_more"]'));
+        if (moreSection) {
+            const card = moreSection.querySelector('.aprof-card');
+            if (card && !document.getElementById('row-update-app')) {
+                card.insertAdjacentHTML('beforeend', `
+                    <div class="aprof-row" id="row-update-app" onclick="App.checkUpdate()" style="display: flex !important; border-top: 1px solid var(--card-border);">
+                        <span class="material-icons-round">system_update</span>
+                        <span class="aprof-label" style="flex: 1; font-size: 15px; color: var(--text);">Update App</span>
+                        <span class="material-icons-round aprof-chevron" style="font-size: 20px !important; color: var(--text) !important; opacity: .3 !important;">chevron_right</span>
+                    </div>
+                `);
+            }
+        }
+        
+        setTimeout(() => this._applyPlatformRows(), 200); // Small delay to ensure DOM is ready
         if (!this.currentUser) return;
         const u = this.currentUser;
         document.getElementById('prof-name').textContent = u.displayName || 'User';
@@ -4587,15 +4622,63 @@ https://u2l.ai/MessManager
             navigator.clipboard?.writeText(text).then(() => this.toast('Copied!', 'success'));
         }
     },
-    getApp() {
-        window.location.href = 'https://u2l.ai/MessManager';
+    async checkUpdate() {
+        // Folder ID where APKs are stored
+        const folderId = '1PBrhSIvDk0QrgNS6XeTeA1RDLFPeTqKV'; // Update to the correct ID
+        const apiKey = 'AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8';
+        const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&key=${apiKey}`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const files = data.files || [];
+            
+            // Find latest APK
+            let latestApk = null;
+            let maxBuild = 622; // Current build
+            
+            files.forEach(file => {
+                if (file.name.endsWith('.apk')) {
+                    const match = file.name.match(/build_(\d+)/);
+                    if (match) {
+                        const build = parseInt(match[1]);
+                        if (build > maxBuild) {
+                            maxBuild = build;
+                            latestApk = file;
+                        }
+                    }
+                }
+            });
+            
+            if (latestApk) {
+                if (confirm(`New version found (Build ${maxBuild}). Update now?`)) {
+                    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${latestApk.id}?alt=media&key=${apiKey}`;
+                    if (window.AndroidBridge) {
+                        window.AndroidBridge.downloadAndInstall(downloadUrl);
+                    }
+                }
+            } else {
+                alert("No updates available.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error checking for updates.");
+        }
     },
     _applyPlatformRows() {
         const native = !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+        console.log("Native platform check:", native);
+        
         const shareRow = document.getElementById('row-share-app');
-        const getRow = document.getElementById('row-get-app');
-        if (shareRow) shareRow.style.display = native ? '' : 'none';
-        if (getRow) getRow.style.display = native ? 'none' : '';
+        const updateRow = document.getElementById('row-update-app');
+        
+        console.log("Share row:", shareRow, "Update row:", updateRow);
+        
+        if (shareRow) shareRow.style.display = native ? 'flex' : 'none';
+        if (updateRow) {
+            updateRow.style.display = 'flex';
+            console.log("Forced updateRow display to flex");
+        }
     },
     _driveFiles: {
         about: { url: 'https://www.googleapis.com/drive/v3/files/1s45exjbMZhDk-Yt7oHSYjO6P_FiPs3YY?alt=media&key=AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8', key: 'cache_about_md' },
