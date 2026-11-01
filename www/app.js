@@ -1228,9 +1228,12 @@ const App = {
             const existingSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
             if (existingSnap.exists()) {
                 const ed = existingSnap.val() || {};
-                if (ed.status === 'pending') { this.toast('Join request already pending', 'info'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
-                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: ed.joinedAt || Date.now() });
-                this._userMessesCacheUpdate(mid, 'member');
+                if (ed.status === 'pending') {
+                    // Direct join: activate any old pending request immediately.
+                    try { await db.ref(`messes/${mid}/members/${this.currentUser.uid}/status`).set('active'); } catch (e2) {}
+                }
+                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: ed.role || 'member', joinedAt: ed.joinedAt || Date.now() });
+                this._userMessesCacheUpdate(mid, ed.role || 'member');
                 this.toast('Joined!', 'success');
                 document.getElementById('join-mess-code').value = '';
                 this.enterMess(mid);
@@ -1238,13 +1241,16 @@ const App = {
                 return;
             }
             try {
-                await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'pending', joinedAt: Date.now() });
+                await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'active', joinedAt: Date.now() });
+                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: Date.now() });
             } catch (err) {
                 this.toast((err && err.code === 'PERMISSION_DENIED') ? 'Mess not found' : 'Error: ' + (err && err.message ? err.message : err), 'error');
                 return;
             }
-            this.toast('Request sent! Waiting for approval.', 'success');
+            this._userMessesCacheUpdate(mid, 'member');
+            this.toast('Joined successfully!', 'success');
             document.getElementById('join-mess-code').value = '';
+            this.enterMess(mid);
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
         finally { btn.textContent = 'Join Mess'; btn.disabled = false; }
     },
