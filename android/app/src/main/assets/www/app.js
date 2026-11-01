@@ -186,7 +186,7 @@ const App = {
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Log out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
-        prof_version:'Version 1.5.19 (build 679)',
+        prof_version:'Version 1.5.20 (build 682)',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
         // Select Month
@@ -358,7 +358,7 @@ const App = {
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'লগ আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
-            prof_version:'ভার্সন 1.5.19 (বিল্ড 679)',
+            prof_version:'ভার্সন 1.5.20 (বিল্ড 682)',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
             // Select Month
@@ -782,6 +782,10 @@ const App = {
         catch (e) { this.toast(e.message, 'error'); }
     },
 
+    _validMid(mid) {
+        return typeof mid === 'string' && mid.length > 0 && mid !== 'undefined' && mid !== 'null';
+    },
+
     async loadMyMesses() {
         if (!this.currentUser) return;
         const cacheKey = `user_messes_${this.currentUser.uid}`;
@@ -805,6 +809,18 @@ const App = {
                     data = snap.val() || {};
                     try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
                 } catch (e) {}
+            }
+        }
+        // Sanitize: drop corrupt mess ids (e.g. the literal "undefined") whether they
+        // came from the local cache or fresh from the database, and clean the DB entry.
+        const badIds = Object.keys(data).filter(k => !this._validMid(k));
+        if (badIds.length) {
+            badIds.forEach(k => { delete data[k]; });
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            if (!offline) {
+                const patch = {};
+                badIds.forEach(k => { patch[`users/${this.currentUser.uid}/messes/${k}`] = null; });
+                db.ref().update(patch).catch(() => {});
             }
         }
         const ids = Object.keys(data);
@@ -844,7 +860,7 @@ const App = {
     },
 
     _userMessesCacheUpdate(mid, role) {
-        if (!this.currentUser || !mid) return;
+        if (!this.currentUser || !this._validMid(mid)) return;
         try {
             const key = `user_messes_${this.currentUser.uid}`;
             const c = JSON.parse(localStorage.getItem(key) || '{}');
@@ -957,6 +973,12 @@ const App = {
     },
 
     async enterMess(mid, opts) {
+        if (!this._validMid(mid)) {
+            try { localStorage.removeItem('current_mess_id'); } catch (e) {}
+            this.messId = null;
+            this.toast('Invalid mess. Please create or join a mess.', 'error');
+            return this.loadMyMesses();
+        }
         this.messId = mid;
         this.messCode = null;
         const settingsCacheKey = `mess_settings_${mid}`;
@@ -1154,6 +1176,11 @@ const App = {
             const code = this.genCode(6);
             const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Connection timeout')), 15000));
             const newKey = db.ref('messes').push().key;
+            if (!newKey || typeof newKey !== 'string' || newKey === 'undefined' || newKey === 'null') {
+                this.toast('Error: could not generate mess id. Please try again.', 'error');
+                btn.textContent = 'Create Mess'; btn.disabled = false;
+                return;
+            }
             const write = db.ref(`messes/${newKey}`).set({
                 settings: { messName: name, messCode: code, owner: this.currentUser.uid, createdAt: Date.now() },
                 members: { [this.currentUser.uid]: { name: this.currentUser.displayName || 'Admin', email: this.currentUser.email, role: 'admin', joinedAt: Date.now() } }
@@ -1196,7 +1223,8 @@ const App = {
                     if (snap.exists()) snap.forEach(s => { if (!mid) mid = s.key; });
                 } catch (e) { /* index missing and legacy query denied */ }
             }
-            if (!mid) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            if (!mid || !this._validMid(String(mid))) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            mid = String(mid);
             const existingSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
             if (existingSnap.exists()) {
                 const ed = existingSnap.val() || {};
@@ -2359,9 +2387,14 @@ https://u2l.ai/MessManager
             const m = mSnap.val() || {};
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/status`] = 'active';
-            updates[`users/${uid}/messes/${this.messId}`] = { role: 'member', joinedAt: m.joinedAt || Date.now() };
                 updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: false, mealEntry: false, mealEdit: false, togglePerms: false, manage: false };
             await db.ref().update(updates);
+            // Give the member their mess index so they land straight in the app.
+            // Best effort: older/stricter rules may block an admin from writing
+            // another user's index, so approval must not fail because of it.
+            try {
+                await db.ref(`users/${uid}/messes/${this.messId}`).set({ role: 'member', joinedAt: m.joinedAt || Date.now() });
+            } catch (e) { /* member can still re-join with the mess code */ }
             this.toast(`${m.name || 'Member'} approved!`, 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
@@ -2376,8 +2409,8 @@ https://u2l.ai/MessManager
             if (!confirm(`Reject ${m.name || 'this member'}?`)) return;
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}`] = null;
-            updates[`users/${uid}/messes/${this.messId}`] = null;
             await db.ref().update(updates);
+            try { await db.ref(`users/${uid}/messes/${this.messId}`).remove(); } catch (e) { /* best effort */ }
             this.toast('Request rejected', 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
