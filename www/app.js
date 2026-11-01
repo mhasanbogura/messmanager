@@ -863,8 +863,19 @@ const App = {
             if (!offline) { db.ref().update(drop).catch(() => {}); db.ref(`users/${this.currentUser.uid}/currentMess`).set(keep).catch(() => {}); }
         }
         const finalIds = Object.keys(data);
-        if (finalIds.length === 1) { this.enterMess(finalIds[0]); return; }
-        if (finalIds.length > 1) {
+        if (finalIds.length === 1) {
+            const onlyMid = finalIds[0];
+            let messOk = true;
+            if (!offline) {
+                try {
+                    const ms = await db.ref(`messes/${onlyMid}/settings`).once('value');
+                    messOk = ms.exists();
+                } catch (e) { messOk = true; }
+            }
+            if (messOk) { this.enterMess(onlyMid); return; }
+            // Mess data is gone/unreadable: show the list so the user can remove it.
+        }
+        if (finalIds.length > 0) {
             this.showScreen('mess-select-screen');
             const div = document.getElementById('my-messes-list');
             let html = '<div class="card-body">';
@@ -884,7 +895,7 @@ const App = {
                 }
                 html += `<div class="mess-item" onclick="App.enterMess('${mid}')">
                     <div class="mess-item-icon"><span class="material-icons-round">home</span></div>
-                    <div class="mess-item-info"><h4>${this.esc(s.messName || 'Unnamed')}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
+                    <div class="mess-item-info"><h4>${this.esc(s.messName || (s.messCode ? 'Unnamed' : 'Mess unavailable'))}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
                     <button class="mess-item-leave" title="${this._currentLang === 'bn' ? 'মেস ছাড়ুন' : 'Leave mess'}" onclick="event.stopPropagation();App.leaveFromSelect('${mid}')"><span class="material-icons-round">logout</span></button>
                     <span class="material-icons-round" style="color:var(--text-secondary)">chevron_right</span>
                 </div>`;
