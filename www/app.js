@@ -1875,11 +1875,10 @@ const App = {
                 } else if (isYou && !isAdmin) {
                     actionsHtml = `<div class="fp-actions">
                         <button class="fp-btn fp-btn-red" onclick="event.stopPropagation();App.leaveMess()">Leave</button>
-                        ${!hasManager ? `<button class="fp-btn fp-btn-green" onclick="event.stopPropagation();App.becomeManager()">Become Manager</button>` : ''}
                     </div>`;
                 } else if (!isYou) {
                     const showRemove = canManage;
-                    const showPromote = canManage || !hasManager;
+                    const showPromote = canManage;
                     if (showRemove || showPromote) {
                         actionsHtml = `<div class="fp-actions">
                             ${showRemove ? `<button class="fp-btn fp-btn-red" onclick="event.stopPropagation();App.removePerson('${id}','${this.esc(m.name||'')}')">Remove</button>` : ''}
