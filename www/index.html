@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Mess Manager</title>
     <link rel="icon" type="image/png" href="app-icon.png?v=1.4.40">
-    <link rel="stylesheet" href="style.css?v=202610111347">
+    <link rel="stylesheet" href="style.css?v=202611101600">
     <link href="fonts/material-icons.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -643,7 +643,7 @@
                         </div>
                         <div class="aprof-row" onclick="App.signOutConfirm()">
                             <span class="material-icons-round">logout</span>
-                            <span class="aprof-label" data-lang-key="prof_logout">Log out</span>
+                            <span class="aprof-label" data-lang-key="prof_logout">Sign out</span>
                             <span class="material-icons-round aprof-chevron">chevron_right</span>
                         </div>
                         <div class="aprof-row" onclick="App.sendResetConfirm()">
@@ -661,6 +661,11 @@
                 <div class="aprof-section">
                     <div class="aprof-card">
                         <div class="aprof-section-title" data-lang-key="prof_more">MORE</div>
+                        <div class="aprof-row" onclick="App.checkUpdate()">
+                            <span class="material-icons-round">system_update_alt</span>
+                            <span class="aprof-label" data-lang-key="prof_update">Update App</span>
+                            <span class="material-icons-round aprof-chevron">chevron_right</span>
+                        </div>
                         <div class="aprof-row" id="row-share-app" onclick="App.shareApp()">
                             <span class="material-icons-round">share</span>
                             <span class="aprof-label" data-lang-key="prof_share_app">Share App</span>
@@ -723,6 +728,6 @@
     <script src="firebase-auth-compat.js" defer></script>
     <script src="firebase-database-compat.js" defer></script>
     <script src="firebase-config.js" defer></script>
-    <script src="app.js?v=202610111347" defer></script>
+    <script src="app.js?v=202611101600" defer></script>
 </body>
 </html>

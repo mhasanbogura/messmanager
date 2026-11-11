@@ -853,7 +853,7 @@ select.input-sm { cursor: pointer; }
     .reset-line1 { white-space: normal; overflow-x: visible; }
 }
 
-.dialog-wrap { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 80; padding: 20px; padding-bottom: calc(20px + var(--sab)); }
+.dialog-wrap { position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 80; padding: 20px; padding-bottom: calc(20px + var(--sab)); }
 .dialog-wrap:not([hidden]) { display: flex; align-items: center; justify-content: center; }
 .dialog {
     background: var(--card-solid); border-radius: var(--radius); width: 100%; max-width: 420px;
@@ -873,6 +873,17 @@ select.input-sm { cursor: pointer; }
 .dialog-actions .btn.secondary:hover { background: linear-gradient(135deg, #b6bdc7, #6b7280); }
 .dialog-actions .btn.danger { background: linear-gradient(135deg, #F44336, #D32F2F); color: #fff; }
 .dialog-actions .btn.danger:hover { background: linear-gradient(135deg, #FF7A70, #E53935); }
+/* Forced update dialog: single full-width blue Update button (Meter Manager style) */
+.dialog-actions .btn.primary,
+.dialog-actions .btn.primary-action {
+    background: #2563eb; color: #fff; border: none;
+    background-image: none;
+}
+.dialog-actions .btn.primary:hover,
+.dialog-actions .btn.primary-action:hover { background: #1d4ed8; background-image: none; }
+.dialog-actions .btn.primary:active,
+.dialog-actions .btn.primary-action:active { background: #1e40af; background-image: none; }
+.body-text { color: var(--text); }
 #confirm-yes:hover { background: linear-gradient(135deg, #FF7A70, #E53935) !important; }
 #confirm-no:hover { background: linear-gradient(135deg, #b6bdc7, #6b7280) !important; }
 

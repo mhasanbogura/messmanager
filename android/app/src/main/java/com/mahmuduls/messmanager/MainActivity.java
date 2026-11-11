@@ -30,6 +30,7 @@ import com.codetrixstudio.capacitor.GoogleAuth.GoogleAuth;
 
 public class MainActivity extends BridgeActivity implements LifecycleEventObserver {
     private Handler mainHandler;
+    private APKInstaller apkInstaller;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -50,6 +51,10 @@ public class MainActivity extends BridgeActivity implements LifecycleEventObserv
 
         WebView webView = getBridge().getWebView();
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidBridge");
+
+        // Forced-update flow: DownloadManager + FileProvider install, driven by
+        // AndroidBridge.downloadAndInstall / getDownloadProgress from JS.
+        apkInstaller = new APKInstaller(this);
 
         getLifecycle().addObserver(this);
 
@@ -155,6 +160,20 @@ public class MainActivity extends BridgeActivity implements LifecycleEventObserv
         @JavascriptInterface
         public boolean isSystemDarkMode() {
             return MainActivity.this.isSystemDarkMode();
+        }
+
+        /** Starts the APK download for a forced update (Meter Manager parity). */
+        @JavascriptInterface
+        public void downloadAndInstall(String url) {
+            if (apkInstaller == null) apkInstaller = new APKInstaller(MainActivity.this);
+            apkInstaller.downloadAndInstall(url);
+        }
+
+        /** 0-100 download progress; reaches 100 once the installer is launched. */
+        @JavascriptInterface
+        public int getDownloadProgress() {
+            if (apkInstaller == null) apkInstaller = new APKInstaller(MainActivity.this);
+            return apkInstaller.getDownloadProgress();
         }
 
         @JavascriptInterface

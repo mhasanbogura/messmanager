@@ -184,9 +184,10 @@ const App = {
         prof_device_theme:'Device Theme',prof_device_theme_hint:'Automatically switch theme based on system',
         prof_oled_theme:'OLED Theme',prof_oled_theme_hint:'Use OLED black backdrop for eye comfort',
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
-        prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Log out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
+        prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
-        prof_version:'Version 1.5.0 (build 622)',
+        prof_version:'Version 1.6.6 (build 753)',
+        prof_update:'Update App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
         // Select Month
@@ -356,9 +357,10 @@ const App = {
             prof_device_theme:'ডিভাইস থিম',prof_device_theme_hint:'সিস্টেমের সাথে স্বয়ংক্রিয়ভাবে থিম পরিবর্তন করুন',
             prof_oled_theme:'OLED থিম',prof_oled_theme_hint:'চোখের সুবিধার জন্য OLED ব্ল্যাক ব্যাকড্রপ ব্যবহার করুন',
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
-            prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'লগ আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
+            prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
-            prof_version:'ভার্সন 1.5.0 (বিল্ড 622)',
+            prof_version:'ভার্সন 1.6.6 (বিল্ড 753)',
+            prof_update:'অ্যাপ আপডেট',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
             // Select Month
@@ -636,6 +638,8 @@ const App = {
             if (this._hwBackAt && now - this._hwBackAt < 200) return;
             this._hwBackAt = now;
             if (document.getElementById('bz-overlay')) { this.bzClose(); return; }
+            // Forced update dialog: closeDialog() is a no-op while
+            // _updatingForUpdate is set, so back does nothing there.
             if (document.getElementById('dlg') && !document.getElementById('dlg').hidden) { this.closeDialog(); return; }
             const modal = document.getElementById('modal-overlay');
             if (modal && modal.classList.contains('active')) { this.closeModal(); return; }
@@ -1211,6 +1215,13 @@ const App = {
         const savedPage = localStorage.getItem('mess_currentPage');
         const validPages = ['dashboard','members','bazaar','meals','balance','profile'];
         this.navigate(validPages.includes(savedPage) ? savedPage : 'dashboard');
+
+        // Boot update check (once per launch, after the UI is up) — shows the
+        // forced, non-skippable update dialog when a newer build is on Drive.
+        if (!this._bootUpdateChecked) {
+            this._bootUpdateChecked = true;
+            setTimeout(() => this.checkAppUpdate(), 3500);
+        }
     },
 
     navigate(page) {
@@ -5546,10 +5557,10 @@ https://u2l.ai/MessManager
     },
     signOutConfirm() {
         const lang = this._currentLang || 'en';
-        const msg = lang === 'bn' ? 'আপনি কি সত্যিই লগ আউট করতে চান?' : 'Are you sure you want to log out?';
+        const msg = lang === 'bn' ? 'আপনি কি সত্যিই সাইন আউট করতে চান?' : 'Are you sure you want to sign out?';
         const body = document.getElementById('modal-body');
-        body.innerHTML = `<p style="margin:0;font-size:15px">${msg}</p><div class="modal-confirm-actions"><button class="btn-cancel" onclick="App.closeModal()">${lang === 'bn' ? 'বাতিল' : 'Cancel'}</button><button class="btn-danger" onclick="App.closeModal();auth.signOut()">${lang === 'bn' ? 'লগ আউট' : 'Log Out'}</button></div>`;
-        document.getElementById('modal-title').textContent = lang === 'bn' ? 'লগ আউট' : 'Log Out';
+        body.innerHTML = `<p style="margin:0;font-size:15px">${msg}</p><div class="modal-confirm-actions"><button class="btn-cancel" onclick="App.closeModal()">${lang === 'bn' ? 'বাতিল' : 'Cancel'}</button><button class="btn-danger" onclick="App.closeModal();auth.signOut()">${lang === 'bn' ? 'সাইন আউট' : 'Sign out'}</button></div>`;
+        document.getElementById('modal-title').textContent = lang === 'bn' ? 'সাইন আউট' : 'Sign out';
         this.openModal();
         document.getElementById('modal').classList.add('confirm-mode');
     },
@@ -5659,20 +5670,196 @@ https://u2l.ai/MessManager
     },
     openModal() { document.getElementById('modal').classList.remove('confirm-mode'); document.getElementById('modal-overlay').classList.add('active'); },
     closeModal() { document.getElementById('modal-overlay').classList.remove('active'); },
-    openDialog(title, bodyHtml, actions = []) {
+    openDialog(title, bodyHtml, actions = [], canClose = true) {
         document.getElementById('dlgTitle').textContent = title;
         document.getElementById('dlgBody').innerHTML = bodyHtml;
-        document.getElementById('dlgActions').innerHTML = actions.map(a =>
-            `<button class="btn ${a.cls || 'secondary'}" data-act="${a.key}">${a.label}</button>`).join('');
+        document.getElementById('dlgActions').innerHTML = actions.map(a => {
+            let extra = a.cls || 'secondary';
+            if (a.cls === '' || a.cls === 'primary') extra = 'primary primary-action';
+            else if (a.cls === 'danger') extra = 'danger danger-action';
+            return `<button class="btn ${extra}" data-act="${a.key}">${this.esc(a.label)}</button>`;
+        }).join('');
         document.getElementById('dlg').hidden = false;
         document.getElementById('dlgActions').onclick = ev => {
             const btn = ev.target.closest('[data-act]'); if (!btn) return;
             const act = actions.find(a => a.key === btn.dataset.act);
             if (act && act.fn) act.fn(btn);
         };
-        document.getElementById('dlg').onclick = e => { if (e.target.id === 'dlg') this.closeDialog(); };
+        const dlg = document.getElementById('dlg');
+        dlg.onclick = e => { if (canClose && e.target.id === 'dlg') this.closeDialog(); };
     },
-    closeDialog() { document.getElementById('dlg').hidden = true; },
+    closeDialog() {
+        // Block dismissal while the forced update dialog is showing — the only
+        // way out is the Update button (same as Meter Manager).
+        if (this._updatingForUpdate) return;
+        document.getElementById('dlg').hidden = true;
+    },
+
+    /* ---------- app update · Google Drive scan (same flow as Meter Manager) ---------- */
+
+    // Folder where the release APKs live (the "Android" subfolder of the store).
+    _driveFolderId: '1jruC0NSqZjxHVJ6IkgoLDt7TIgbV9o1h',
+    _driveApiKey: 'AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8',
+    // Forced-update flag: blocks closeDialog(), backdrop clicks and the back button.
+    _updatingForUpdate: false,
+
+    /* Current installed build (versionCode) — read from the native package info
+       and the profile version string, taking the highest value so a stale source
+       (e.g. a page string not yet refreshed right after an update) can never make
+       the app think it is older than it really is. */
+    async _currentBuild() {
+        let best = 0;
+        try {
+            const info = await window.Capacitor?.Plugins?.App?.getInfo?.();
+            if (info && info.build) best = Math.max(best, parseInt(info.build, 10) || 0);
+        } catch (e) { /* fall through */ }
+        const m = (document.querySelector('[data-lang-key="prof_version"]')?.textContent || '')
+            .match(/build\s+(\d+)/i);
+        if (m) best = Math.max(best, parseInt(m[1], 10) || 0);
+        return best;
+    },
+
+    /* Scans the Drive release folder and resolves with
+       { ok, available, latestName, downloadUrl, fileId, error }. */
+    async _scanDriveForUpdate() {
+        const url = `https://www.googleapis.com/drive/v3/files?q='${this._driveFolderId}'+in+parents+and+trashed=false&fields=files(id,name)&pageSize=50&orderBy=modifiedTime+desc&key=${this._driveApiKey}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.error) return { ok: false, error: data.error.message || 'Drive error' };
+            const files = data.files || [];
+
+            const current = await this._currentBuild();
+            let latest = null, latestVersion = '', maxBuild = 0;
+
+            files.forEach(file => {
+                if (!file.name.endsWith('.apk')) return;
+                if (file.name.indexOf('Mess Manager') !== 0) return; // only this app
+                const m = file.name.match(/build_(\d+)/);
+                if (!m) return;
+                const build = parseInt(m[1], 10);
+                if (build > maxBuild) {
+                    maxBuild = build;
+                    latest = file;
+                    // "Mess Manager_com.mahmuduls.messmanager_v1.6.4_build_747.apk" → "1.6.4"
+                    const vm = file.name.match(/_v(\d[\d.]*)_build_\d+/);
+                    latestVersion = vm ? vm[1] : '';
+                }
+            });
+
+            if (!latest) return { ok: true, available: false };
+
+            const available = maxBuild > current;
+            return {
+                ok: true,
+                available,
+                build: maxBuild,
+                version: latestVersion,
+                // Show the version number (e.g. "1.6.4"), not the build number.
+                latestName: latestVersion || `Build ${maxBuild}`,
+                fileId: latest.id,
+                fileName: latest.name,
+                downloadUrl: `https://www.googleapis.com/drive/v3/files/${latest.id}?alt=media&key=${this._driveApiKey}`
+            };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'network error' };
+        }
+    },
+
+    /* Boot check — shows the forced popup when a newer build exists on Drive. */
+    async checkAppUpdate() {
+        if (this._updatingForUpdate) return;
+        const info = await this._scanDriveForUpdate();
+        if (info && info.ok && info.available) this.showForcedUpdatePopup(info);
+    },
+
+    /* Settings "Update App" row: toast "checking" → scan → popup / latest toast. */
+    async checkUpdate() {
+        if (this._updatingForUpdate) return;
+        this.toast('Checking for updates...', 'info');
+        const info = await this._scanDriveForUpdate();
+        if (info && info.ok && info.available) {
+            this.showForcedUpdatePopup(info);
+        } else if (info && info.ok) {
+            this.toast('You are using the latest version', 'success');
+        } else {
+            this.toast('Update check failed: ' + ((info && info.error) || 'unknown error'), 'error');
+        }
+    },
+
+    /* Forced (non-dismissible) update dialog — only shown when a newer build exists. */
+    showForcedUpdatePopup(info) {
+        // Prevent duplicate popups
+        if (document.getElementById('dlg').hidden === false) return;
+
+        this._updatingForUpdate = true;
+
+        this.openDialog(
+            '',
+            `<div class="body-text" style="text-align:center; padding: 2px 0;">
+               <img src="app-icon.png" style="width: 36px; height: 36px; margin: 0 auto 2px auto; display: block;">
+               <p class="body-text" style="margin: 0; font-size: 15px; font-weight: bold;">Update Available</p>
+               <p class="body-text" style="margin: 2px 0 2px 0; font-size: 12.5px; color: #64748b;">A new version (${this.esc(info.latestName || '')}) is available.</p>
+             </div>`,
+            [{
+                key: 'update',
+                label: 'Update',
+                cls: 'primary',
+                fn: (btn) => {
+                    this._styleUpdateButton(btn);
+                    btn.textContent = 'Downloading...';
+                    this.startUpdateDownload(info, percent => {
+                        btn.textContent = percent < 100 ? 'Downloading...' : 'Installing...';
+                    });
+                }
+            }],
+            false // canClose = false → backdrop click does nothing
+        );
+
+        // Disable background click for forced update (no way out except Update)
+        const dlg = document.getElementById('dlg');
+        dlg.onclick = e => { if (e.target.id === 'dlg') return; };
+
+        // Force button to be full width blue in CSS
+        setTimeout(() => {
+            const btn = document.querySelector('#dlgActions .primary-action');
+            if (btn) this._styleUpdateButton(btn);
+        }, 50);
+    },
+
+    _styleUpdateButton(btn) {
+        btn.style.width = '90%';
+        btn.style.display = 'block';
+        btn.style.margin = '0 auto 2px auto';
+        btn.style.padding = '8px';
+        btn.style.borderRadius = '12px';
+        btn.style.backgroundColor = '#2563eb';
+        btn.style.color = '#ffffff';
+        btn.style.border = 'none';
+    },
+
+    startUpdateDownload(info, progressCb) {
+        if (window.AndroidBridge && typeof window.AndroidBridge.downloadAndInstall === 'function') {
+            window.AndroidBridge.downloadAndInstall(info.downloadUrl);
+
+            // Poll native download progress: <100 → Downloading..., 100 → Installing...
+            if (this._updateProgressTimer) clearInterval(this._updateProgressTimer);
+            this._updateProgressTimer = setInterval(() => {
+                let p = 100;
+                try {
+                    if (window.AndroidBridge && typeof window.AndroidBridge.getDownloadProgress === 'function') {
+                        p = parseInt(window.AndroidBridge.getDownloadProgress(), 10) || 0;
+                    }
+                } catch (e) { p = 100; }
+                if (progressCb) progressCb(p);
+                if (p >= 100) clearInterval(this._updateProgressTimer);
+            }, 1000);
+        } else {
+            try { location.href = info.downloadUrl; } catch (e) {}
+            if (progressCb) progressCb(100);
+        }
+    },
+
 
     esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
 
@@ -5750,3 +5937,10 @@ https://u2l.ai/MessManager
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
+
+
+
+
+
+

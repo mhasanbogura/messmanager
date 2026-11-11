@@ -3,3 +3,9 @@
 *.log
 node_modules/
 .env
+
+# Local build outputs / test files (not part of the repo)
+app-debug.apk
+icon-test.html
+android/app/src/main/assets/public/
+android/app/src/main/assets/fonts/
