@@ -100,73 +100,129 @@ task syncKeystore {
     }
 }
 
-project.afterEvaluate {
-    tasks.findByName('assembleDebug')?.dependsOn('stampVersion')
-    tasks.findByName('mergeDebugAssets')?.dependsOn('stampVersion')
-    tasks.findByName('preBuild')?.dependsOn('syncKeystore')
+// Keeps android/app/src/main/assets/public in sync with www/ so every build
+// ships the latest web assets (Capacitor serves these at runtime).
+task syncWebAssets(type: Copy) {
+    description = 'Copies www/* into android/app/src/main/assets/public'
+    from "${project.projectDir}/../../www"
+    into "${project.projectDir}/src/main/assets/public"
 }
 
+project.afterEvaluate {
+    tasks.findByName('assembleDebug')?.dependsOn('stampVersion')
+    tasks.findByName('mergeDebugAssets')?.dependsOn('stampVersion', 'syncWebAssets')
+    tasks.findByName('mergeReleaseAssets')?.dependsOn('syncWebAssets')
+    tasks.findByName('syncWebAssets')?.dependsOn('stampVersion')
+    tasks.findByName('preBuild')?.dependsOn('syncKeystore')
+    // Every build is published automatically: Drive + git push + GitHub Release.
+    tasks.findByName('assembleDebug')?.finalizedBy('release')
+}
+
+// --- Release helpers (cross-platform: no bash/cp/rm, resolves gh per-OS) ----
+def ghPath() {
+    def candidates = [project.findProperty('ghPath'),
+                      'C:/Program Files/GitHub CLI/gh.exe',
+                      "${System.getProperty('user.home')}/.local/bin/gh",
+                      '/usr/local/bin/gh', '/usr/bin/gh'].findAll { it }
+    def found = candidates.collect { file(it) }.find { it.exists() }
+    found ? found.absolutePath : 'gh'
+}
+
+def driveStoreDir() {
+    def candidates = ['C:/Google Drive/mahmudulhasandhk70/App Store/Android',
+                      "${System.getProperty('user.home')}/Google Drive/mahmudulhasandhk70/App Store/Android",
+                      '/home/mhasanbogura/Google Drive/mahmudulhasandhk70/App Store/Android']
+    candidates.collect { file(it) }.find { it.isDirectory() }
+}
+
+// Runs a command; returns its exit code. Throws on failure unless ignored.
+def runCmd = { List<String> args, File dir, boolean ignoreFailure ->
+    def out = new ByteArrayOutputStream()
+    def err = new ByteArrayOutputStream()
+    def result = project.exec {
+        workingDir dir
+        commandLine args
+        standardOutput out
+        errorOutput err
+        ignoreExitValue true
+    }
+    if (result.exitValue != 0 && !ignoreFailure) {
+        throw new GradleException(
+            "Release step failed (exit ${result.exitValue}): ${args.join(' ')}\n" +
+            "${out.toString()}${err.toString()}")
+    }
+    result.exitValue as int
+}
+
+// release: publishes EVERY build — copies the APK to the Google Drive store
+// (used by the in-app Update App scan), commits+pushes the repo, and creates/
+// refreshes the GitHub Release for this version. Runs automatically after
+// assembleDebug (see afterEvaluate above). Opt out with -PskipRelease.
 task release {
+    group = 'distribution'
+    description = 'Deploys the APK to Google Drive, pushes git and publishes a GitHub Release'
     dependsOn 'assembleDebug'
     doLast {
-        def content = versionFile.text
-        def currentCodeMatcher = (content =~ /versionCode (\d+)/)
-        def currentNameMatcher = (content =~ /versionName "([\d.]+)"/)
-        def v = currentNameMatcher[0][1]
-        def b = currentCodeMatcher[0][1] as int
+        if (project.hasProperty('skipRelease')) {
+            println 'Release skipped (-PskipRelease)'
+            return
+        }
+        def buildState = tasks.findByName('assembleDebug')?.state
+        if (buildState != null && buildState.failure != null) {
+            println 'Build failed - release skipped'
+            return
+        }
 
-        def apkName = "MessManager.apk"
+        def content = versionFile.text
+        def v = (content =~ /versionName "([\d.]+)"/)[0][1]
+        def b = ((content =~ /versionCode (\d+)/)[0][1]) as int
+        def repoRoot = project.projectDir.parentFile.parentFile
         def apkPath = file("${buildDir}/outputs/apk/debug/app-debug.apk")
+        if (!apkPath.exists()) {
+            throw new GradleException("Built APK not found: ${apkPath}")
+        }
+        def apkName = "MessManager.apk"
         def tagName = "v${v}"
-        def rootDir = project.projectDir.parentFile
-        def ghBin = new File(System.getProperty("user.home"), ".local/bin/gh").absolutePath
-        def apkStore = "/home/mhasanbogura/Google Drive/mahmudulhasandhk70/App Store/Android"
+        def gh = ghPath()
         def storeApkName = "Mess Manager_com.mahmuduls.messmanager_v${v}_build_${b}.apk"
 
-        println "Release v${v} build ${b}..."
+        println "Releasing Mess Manager v${v} (build ${b})..."
 
-        exec {
-            workingDir rootDir
-            commandLine 'cp', apkPath.absolutePath, "${rootDir}/${apkName}"
-        }
+        // 1. Refresh the tracked APK at the repo root
+        java.nio.file.Files.copy(apkPath.toPath(), new File(repoRoot, apkName).toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
 
-        exec {
-            workingDir rootDir
-            commandLine 'bash', '-c', "rm -f '${apkStore}/MessManager.apk' '${apkStore}/mess-manager.apk' '${apkStore}/Mess Manager_com.mahmuduls.messmanager_'*.apk"
-            ignoreExitValue = true
-        }
-        exec {
-            workingDir rootDir
-            commandLine 'cp', apkPath.absolutePath, "${apkStore}/${storeApkName}"
-        }
-
-        exec {
-            workingDir rootDir
-            commandLine 'git', 'add', '-A'
-        }
-        exec {
-            workingDir rootDir
-            commandLine 'git', 'commit', '-m', "v${v} build ${b}"
-            ignoreExitValue = true
-        }
-        exec {
-            workingDir rootDir
-            commandLine 'git', 'push'
+        // 2. Google Drive store (scanned by the in-app Update App feature)
+        def store = driveStoreDir()
+        if (store != null) {
+            store.listFiles()?.each { f ->
+                if (f.name == 'MessManager.apk' || f.name == 'mess-manager.apk' ||
+                        f.name.startsWith('Mess Manager_com.mahmuduls.messmanager_')) {
+                    f.delete()
+                }
+            }
+            java.nio.file.Files.copy(apkPath.toPath(), new File(store, storeApkName).toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            println "Deployed to Drive: ${store}/${storeApkName}"
+        } else {
+            println 'WARNING: Google Drive store folder not found - skipping Drive deploy'
         }
 
-        exec {
-            workingDir rootDir
-            commandLine ghBin, 'release', 'delete', tagName, '--yes'
-            ignoreExitValue = true
+        // 3. Commit and push the source tree
+        runCmd(['git', 'add', '-A'], repoRoot, true)
+        runCmd(['git', 'commit', '-m', "v${v} build ${b}"], repoRoot, true) // no-op if nothing changed
+        runCmd(['git', 'push'], repoRoot, false)
+
+        // 4. GitHub Release (recreated so the tag always points at this build)
+        def releaseExists = runCmd([gh, 'release', 'view', tagName], repoRoot, true) == 0
+        if (releaseExists) {
+            runCmd([gh, 'release', 'delete', tagName, '--yes'], repoRoot, false)
         }
-        exec {
-            workingDir rootDir
-            commandLine ghBin, 'release', 'create', tagName,
-                "${rootDir}/${apkName}",
+        runCmd(['git', 'push', '--delete', 'origin', tagName], repoRoot, true) // may not exist
+        runCmd([gh, 'release', 'create', tagName, new File(repoRoot, apkName).absolutePath,
                 '--title', "Mess Manager v${v} (build ${b})",
                 '--notes', "Mess Manager v${v} build ${b}\nPackage: com.mahmuduls.messmanager",
-                '--latest'
-        }
+                '--latest'], repoRoot, false)
 
         println "Released ${tagName} on GitHub with ${apkName}"
     }
@@ -208,8 +264,8 @@ android {
         applicationId "com.mahmuduls.messmanager"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 753
-        versionName "1.6.6"
+        versionCode 756
+        versionName "1.6.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

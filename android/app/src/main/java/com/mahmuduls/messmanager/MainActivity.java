@@ -208,13 +208,6 @@ public class MainActivity extends BridgeActivity implements LifecycleEventObserv
         }
 
         @JavascriptInterface
-        public void downloadAndInstall(String url) {
-            mainHandler.post(() -> {
-                new APKInstaller(MainActivity.this).downloadAndInstall(url);
-            });
-        }
-
-        @JavascriptInterface
         public void saveTheme(String theme) {
             getSharedPreferences("MessManager", MODE_PRIVATE).edit().putString("theme", theme).apply();
             if (mainHandler != null) {
