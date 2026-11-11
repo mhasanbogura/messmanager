@@ -8,7 +8,8 @@
         ".write": "auth != null && auth.uid === $uid",
         "messes": {
           "$mid": {
-            ".write": "auth != null && (auth.uid === $uid || (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() != 'pending') || (root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() == true && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() != 'pending') || (!data.exists() && !newData.exists()))"
+            ".read": "auth != null",
+            ".write": "auth != null && (auth.uid === $uid || (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' && root.child('messes').child($mid).child('members').child($uid).exists()))"
           }
         }
       }
@@ -16,76 +17,75 @@
     "messCodes": {
       "$code": {
         ".read": "auth != null",
-        ".write": "auth != null && ((!data.exists() && newData.isString() && root.child('messes').child(newData.val()).child('members').child(auth.uid).child('role').exists() && root.child('messes').child(newData.val()).child('members').child(auth.uid).child('status').val() != 'pending') || (!newData.exists() && data.isString() && ((root.child('messes').child(data.val()).child('members').child(auth.uid).child('role').exists() && root.child('messes').child(data.val()).child('members').child(auth.uid).child('status').val() != 'pending') || !root.child('messes').child(data.val()).exists())))"
+        ".write": "auth != null && ((newData.exists() && root.child('messes').child(newData.val()).child('members').child(auth.uid).child('role').val() == 'admin') || (data.exists() && !newData.exists() && root.child('messes').child(data.val()).child('members').child(auth.uid).child('role').val() == 'admin'))"
       }
     },
     "messes": {
       ".read": "auth != null && query.orderByChild == 'settings/messCode' && query.equalTo != null",
       ".indexOn": ["settings/messCode"],
       "$mid": {
-        ".read": "auth != null && (!data.exists() || (data.child('members').child(auth.uid).child('role').exists() && data.child('members').child(auth.uid).child('status').val() !== 'pending'))",
-        ".write": "auth != null && ((!data.exists() && newData.child('settings').child('messCode').isString() && newData.child('settings').child('owner').val() == auth.uid && newData.child('members').child(auth.uid).child('role').val() == 'admin') || (data.child('members').child(auth.uid).child('role').val() == 'admin' && data.child('members').child(auth.uid).child('status').val() !== 'pending') || (data.child('permissions').child(auth.uid).child('manage').val() == true && data.child('members').child(auth.uid).child('role').exists() && data.child('members').child(auth.uid).child('status').val() !== 'pending') || (!newData.exists() && !data.child('members').exists()))",
+        ".read": "auth != null && (!data.exists() || data.child('members').child(auth.uid).child('role').exists())",
+        ".write": "auth != null && ((!data.exists() && newData.child('settings').child('owner').val() == auth.uid && newData.child('settings').child('messCode').isString() && newData.child('members').child(auth.uid).child('role').val() == 'admin') || data.child('members').child(auth.uid).child('role').val() == 'admin')",
         "members": {
           "$uid": {
-            ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid && ((!data.exists() && newData.child('role').val() == 'member' && newData.child('status').val() == 'pending' && newData.child('name').isString() && root.child('messes').child($mid).child('settings').child('messCode').isString()) || (newData.exists() && data.child('status').val() !== 'pending' && (newData.child('role').val() == 'admin' || newData.child('role').val() == 'member') && (!newData.child('status').exists() || newData.child('status').val() == data.child('status').val())) || !newData.exists())",
-            "photo": {
-              ".write": "auth != null && newData.isString() && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && ($uid == auth.uid || $uid == root.child('users').child(auth.uid).child('name').val() || $uid == root.child('messes').child($mid).child('members').child(auth.uid).child('name').val())"
-            }
-          }
-        },
-        "permissions": {
-          "$uid": {
-            ".write": "auth != null && auth.uid === $uid && !newData.exists()",
-            "$key": {
-              ".write": "auth != null && auth.uid !== $uid && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() == true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('togglePerms').val() == true)"
-            }
+            ".read": "auth != null",
+            ".write": "auth != null && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || (auth.uid === $uid && ((data.exists() && (!newData.exists() || newData.child('role').val() == data.child('role').val())) || (!data.exists() && newData.exists() && newData.child('role').val() == 'member' && (root.child('users').child(auth.uid).child('currentMess').val() == $mid || (!root.child('users').child(auth.uid).child('currentMess').exists() && (!root.child('users').child(auth.uid).child('messes').exists() || root.child('users').child(auth.uid).child('messes').child($mid).exists())))))))"
           }
         },
         "settings": {
-          "messName": {
-            ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending'"
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin'"
+        },
+        "permissions": {
+          "$uid": {
+            ".read": "auth != null",
+            "$key": {
+              ".read": "auth != null",
+              ".write": "auth != null && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"
+            }
           }
         },
         "managerRequests": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending'"
+            ".read": "auth != null",
+            ".write": "auth != null && (auth.uid === $uid || root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin')"
           }
         },
         "online": {
           "$uid": {
+            ".read": "auth != null",
             ".write": "auth != null && auth.uid === $uid"
           }
         },
         "meals": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && (root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEntry').val() == true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEdit').val() == true)"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEntry').val() === true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEdit').val() === true)"
         },
         "mealHistory": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && (root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEntry').val() == true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEdit').val() == true)"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEntry').val() === true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEdit').val() === true)"
         },
         "bazarItems": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() == true"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
         },
         "costTrash": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() == true"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
         },
         "deposits": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() == true"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
         },
         "depTrash": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending' && root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() == true"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
         },
         "notices": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending'"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"
         },
         "menus": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending'"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"
         },
         "bazarDuty": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending'"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
         },
         "bazarNote": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && root.child('messes').child($mid).child('members').child(auth.uid).child('status').val() !== 'pending'"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"
         }
       }
     }

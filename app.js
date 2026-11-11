@@ -184,9 +184,10 @@ const App = {
         prof_device_theme:'Device Theme',prof_device_theme_hint:'Automatically switch theme based on system',
         prof_oled_theme:'OLED Theme',prof_oled_theme_hint:'Use OLED black backdrop for eye comfort',
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
-        prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Log out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
+        prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_version:'Version 1.6.6 (build 753)',
+        prof_update:'Update App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
         // Select Month
@@ -356,9 +357,10 @@ const App = {
             prof_device_theme:'ডিভাইস থিম',prof_device_theme_hint:'সিস্টেমের সাথে স্বয়ংক্রিয়ভাবে থিম পরিবর্তন করুন',
             prof_oled_theme:'OLED থিম',prof_oled_theme_hint:'চোখের সুবিধার জন্য OLED ব্ল্যাক ব্যাকড্রপ ব্যবহার করুন',
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
-            prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'লগ আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
+            prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_version:'ভার্সন 1.6.6 (বিল্ড 753)',
+            prof_update:'অ্যাপ আপডেট',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
             // Select Month
@@ -458,7 +460,6 @@ const App = {
                 ]);
             };
             firebase.database.Reference.prototype.set = _writeTimeout(_origSet);
-            firebase.database.Reference.prototype.push = _writeTimeout(_origPush);
             firebase.database.Reference.prototype.remove = _writeTimeout(_origRemove);
             firebase.database.Reference.prototype.update = _writeTimeout(_origUpdate);
         } catch (e) {}
@@ -636,6 +637,8 @@ const App = {
             if (this._hwBackAt && now - this._hwBackAt < 200) return;
             this._hwBackAt = now;
             if (document.getElementById('bz-overlay')) { this.bzClose(); return; }
+            // Forced update dialog: closeDialog() is a no-op while
+            // _updatingForUpdate is set, so back does nothing there.
             if (document.getElementById('dlg') && !document.getElementById('dlg').hidden) { this.closeDialog(); return; }
             const modal = document.getElementById('modal-overlay');
             if (modal && modal.classList.contains('active')) { this.closeModal(); return; }
@@ -783,6 +786,10 @@ const App = {
         catch (e) { this.toast(e.message, 'error'); }
     },
 
+    _validMid(mid) {
+        return typeof mid === 'string' && mid.length > 0 && mid !== 'undefined' && mid !== 'null';
+    },
+
     async loadMyMesses() {
         if (!this.currentUser) return;
         const cacheKey = `user_messes_${this.currentUser.uid}`;
@@ -808,13 +815,75 @@ const App = {
                 } catch (e) {}
             }
         }
+        // Verify each entry is a real membership; drop phantom entries (e.g. a mess
+        // that was deleted, or an old index left over from a previous bug) so they
+        // can never block joining/creating a mess.
+        if (!offline && Object.keys(data).length) {
+            const stale = [];
+            for (const mid of Object.keys(data)) {
+                try {
+                    const ms = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
+                    if (!ms.exists()) stale.push(mid);
+                } catch (e) {
+                    if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
+                }
+            }
+            if (stale.length) {
+                stale.forEach(mid => { delete data[mid]; this._userMessesCacheUpdate(mid, null); });
+                const patch = {};
+                stale.forEach(mid => { patch[`users/${this.currentUser.uid}/messes/${mid}`] = null; });
+                patch[`users/${this.currentUser.uid}/currentMess`] = Object.keys(data)[0] || null;
+                db.ref().update(patch).catch(() => {});
+                try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            }
+        }
+        // Sanitize: drop corrupt mess ids (e.g. the literal "undefined") whether they
+        // came from the local cache or fresh from the database, and clean the DB entry.
+        const badIds = Object.keys(data).filter(k => !this._validMid(k));
+        if (badIds.length) {
+            badIds.forEach(k => { delete data[k]; });
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            if (!offline) {
+                const patch = {};
+                badIds.forEach(k => { patch[`users/${this.currentUser.uid}/messes/${k}`] = null; });
+                db.ref().update(patch).catch(() => {});
+            }
+        }
         const ids = Object.keys(data);
-        if (ids.length === 1) { this.enterMess(ids[0], { skipMemberCheck: true }); return; }
+        // Enforce one mess per user: if several exist, keep the current/most recent
+        // and remove the rest from both the local cache and the database.
         if (ids.length > 1) {
+            let keep = this.messId && data[this.messId] ? this.messId : null;
+            if (!keep) {
+                keep = ids.slice().sort((a, b) => ((data[b] && data[b].joinedAt) || 0) - ((data[a] && data[a].joinedAt) || 0))[0];
+            }
+            const drop = {};
+            ids.forEach(k => {
+                if (k === keep) return;
+                delete data[k];
+                drop[`users/${this.currentUser.uid}/messes/${k}`] = null;
+            });
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            if (!offline) { db.ref().update(drop).catch(() => {}); db.ref(`users/${this.currentUser.uid}/currentMess`).set(keep).catch(() => {}); }
+        }
+        const finalIds = Object.keys(data);
+        if (finalIds.length === 1) {
+            const onlyMid = finalIds[0];
+            let messOk = true;
+            if (!offline) {
+                try {
+                    const ms = await db.ref(`messes/${onlyMid}/settings`).once('value');
+                    messOk = ms.exists();
+                } catch (e) { messOk = true; }
+            }
+            if (messOk) { this.enterMess(onlyMid); return; }
+            // Mess data is gone/unreadable: show the list so the user can remove it.
+        }
+        if (finalIds.length > 0) {
             this.showScreen('mess-select-screen');
             const div = document.getElementById('my-messes-list');
             let html = '<div class="card-body">';
-            for (const mid of ids) {
+            for (const mid of finalIds) {
                 let s = {};
                 try { s = JSON.parse(localStorage.getItem(`mess_settings_${mid}`) || '{}'); } catch (e) {}
                 if (!offline) {
@@ -828,9 +897,10 @@ const App = {
                         } catch (e) {}
                     }
                 }
-                html += `<div class="mess-item" onclick="App.enterMess('${mid}', {skipMemberCheck:true})">
+                html += `<div class="mess-item" onclick="App.enterMess('${mid}')">
                     <div class="mess-item-icon"><span class="material-icons-round">home</span></div>
-                    <div class="mess-item-info"><h4>${this.esc(s.messName || 'Unnamed')}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
+                    <div class="mess-item-info"><h4>${this.esc(s.messName || (s.messCode ? 'Unnamed' : 'Mess unavailable'))}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
+                    <button class="mess-item-leave" title="${this._currentLang === 'bn' ? 'মেস ছাড়ুন' : 'Leave mess'}" onclick="event.stopPropagation();App.leaveFromSelect('${mid}')"><span class="material-icons-round">logout</span></button>
                     <span class="material-icons-round" style="color:var(--text-secondary)">chevron_right</span>
                 </div>`;
             }
@@ -845,7 +915,7 @@ const App = {
     },
 
     _userMessesCacheUpdate(mid, role) {
-        if (!this.currentUser || !mid) return;
+        if (!this.currentUser || !this._validMid(mid)) return;
         try {
             const key = `user_messes_${this.currentUser.uid}`;
             const c = JSON.parse(localStorage.getItem(key) || '{}');
@@ -853,6 +923,83 @@ const App = {
             else delete c[mid];
             localStorage.setItem(key, JSON.stringify(c));
         } catch (e) {}
+    },
+
+    // True only if the user currently belongs to a mess that still exists and has
+    // a member record for them. Phantom/leftover index entries are purged.
+    async _hasValidMembership() {
+        if (!this.currentUser) return false;
+        const uid = this.currentUser.uid;
+        let data = {};
+        try { data = (await db.ref(`users/${uid}/messes`).once('value')).val() || {}; } catch (e) { return false; }
+        const ids = Object.keys(data).filter(k => this._validMid(k));
+        if (!ids.length) return false;
+        const stale = [];
+        for (const mid of ids) {
+            try {
+                const s = await db.ref(`messes/${mid}/members/${uid}`).once('value');
+                if (!s.exists()) stale.push(mid);
+            } catch (e) {
+                if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
+            }
+        }
+        if (stale.length) {
+            const patch = {};
+            stale.forEach(mid => { patch[`users/${uid}/messes/${mid}`] = null; this._userMessesCacheUpdate(mid, null); });
+            if (stale.length === ids.length) patch[`users/${uid}/currentMess`] = null;
+            db.ref().update(patch).catch(() => {});
+        }
+        return stale.length < ids.length;
+    },
+
+    leaveFromSelect(mid) {
+        if (!this.currentUser || !this._validMid(mid)) return;
+        const bn = this._currentLang === 'bn';
+        this.showConfirm(
+            bn ? 'মেস ছাড়ুন' : 'Leave Mess',
+            bn ? 'আপনি কি এই মেস ছাড়তে চান?' : 'Are you sure you want to leave this mess?',
+            ok => { if (ok) this._leaveFromSelect(mid); }
+        );
+    },
+
+    async _leaveFromSelect(mid) {
+        if (!this.currentUser) return;
+        const uid = this.currentUser.uid;
+        let isMember = false;
+        try {
+            const m = await db.ref(`messes/${mid}/members/${uid}`).once('value');
+            isMember = m.exists();
+        } catch (e) { isMember = false; }
+        if (isMember) {
+            // Reuse the normal leave flow (manager step-down, last-member delete).
+            let role = 'member';
+            try { role = (await db.ref(`messes/${mid}/members/${uid}/role`).once('value')).val() || 'member'; } catch (e) {}
+            this.messId = mid;
+            this.userRole = role;
+            try {
+                const cached = JSON.parse(localStorage.getItem(`mess_settings_${mid}`) || 'null');
+                this.messCode = cached && cached.messCode ? cached.messCode : null;
+                this.messName = cached && cached.messName ? cached.messName : null;
+            } catch (e) { this.messCode = null; this.messName = null; }
+            await this._doLeaveMess(role === 'admin');
+            return;
+        }
+        // Not a real member — just remove the stale index entry.
+        try {
+            const patch = {};
+            patch[`users/${uid}/messes/${mid}`] = null;
+            const cm = await db.ref(`users/${uid}/currentMess`).once('value');
+            if (cm.val() === mid) patch[`users/${uid}/currentMess`] = null;
+            await db.ref().update(patch);
+        } catch (e) { /* best effort */ }
+        this._userMessesCacheUpdate(mid, null);
+        try {
+            localStorage.removeItem(`mess_settings_${mid}`);
+            localStorage.removeItem(`mess_role_${mid}`);
+        } catch (e) {}
+        this.toast(this._currentLang === 'bn' ? 'মেস ছাড়া হয়েছে' : 'Left mess', 'success');
+        this.messId = null; this.messCode = null; this.messName = null;
+        this.loadMyMesses();
     },
 
     _setupMessSelectPullRefresh() {
@@ -958,6 +1105,12 @@ const App = {
     },
 
     async enterMess(mid, opts) {
+        if (!this._validMid(mid)) {
+            try { localStorage.removeItem('current_mess_id'); } catch (e) {}
+            this.messId = null;
+            this.toast('Invalid mess. Please create or join a mess.', 'error');
+            return this.loadMyMesses();
+        }
         this.messId = mid;
         this.messCode = null;
         const settingsCacheKey = `mess_settings_${mid}`;
@@ -966,15 +1119,24 @@ const App = {
         try {
             if (!offline) {
                 if (!opts || !opts.skipMemberCheck) {
-                    const memberSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
-                    if (!memberSnap.exists()) {
+                    let memberSnap = null;
+                    let denied = false;
+                    try {
+                        memberSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
+                    } catch (e2) {
+                        denied = e2 && e2.code === 'PERMISSION_DENIED';
+                    }
+                    if (denied || (memberSnap && !memberSnap.exists())) {
                         try { await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).remove(); } catch (e2) {}
+                        try { await db.ref(`users/${this.currentUser.uid}/currentMess`).remove(); } catch (e2) {}
                         this._userMessesCacheUpdate(mid, null);
                         this.toast('You are no longer a member of this mess', 'error');
                         this.messId = null;
                         return this.loadMyMesses();
                     }
                 }
+                // Remember the single active mess for this user.
+                db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid).catch(() => {});
                 let cachedSettings = null;
                 try { cachedSettings = JSON.parse(localStorage.getItem(settingsCacheKey) || 'null'); } catch (e2) {}
                 if (cachedSettings) {
@@ -1124,6 +1286,7 @@ const App = {
             updates[`messes/${mid}/members/${uid}`] = null;
             updates[`messes/${mid}/permissions/${uid}`] = null;
             updates[`users/${uid}/messes/${mid}`] = null;
+            updates[`users/${uid}/currentMess`] = null;
             await db.ref().update(updates);
             this._userMessesCacheUpdate(mid, null);
             if (stepDown) {
@@ -1139,17 +1302,30 @@ const App = {
     async createMess() {
         const name = document.getElementById('create-mess-name').value.trim();
         if (!name) { this.toast('Enter mess name', 'error'); return; }
+
+        // Prevent joining/creating a second mess (phantom entries are ignored/cleaned)
+        if (await this._hasValidMembership()) {
+            this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+            return;
+        }
+
         const btn = document.getElementById('create-mess-btn');
         btn.textContent = 'Creating...'; btn.disabled = true;
         try {
             const code = this.genCode(6);
             const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Connection timeout')), 15000));
             const newKey = db.ref('messes').push().key;
+            if (!newKey || typeof newKey !== 'string' || newKey === 'undefined' || newKey === 'null') {
+                this.toast('Error: could not generate mess id. Please try again.', 'error');
+                btn.textContent = 'Create Mess'; btn.disabled = false;
+                return;
+            }
             const write = db.ref(`messes/${newKey}`).set({
                 settings: { messName: name, messCode: code, owner: this.currentUser.uid, createdAt: Date.now() },
                 members: { [this.currentUser.uid]: { name: this.currentUser.displayName || 'Admin', email: this.currentUser.email, role: 'admin', joinedAt: Date.now() } }
             });
             await Promise.race([write, timeout]);
+            await Promise.race([db.ref(`users/${this.currentUser.uid}/currentMess`).set(newKey), timeout]);
             await Promise.race([db.ref(`users/${this.currentUser.uid}/messes/${newKey}`).set({ role: 'admin', joinedAt: Date.now() }), timeout]);
             db.ref(`messCodes/${code}`).set(newKey).catch(() => {});
             this._userMessesCacheUpdate(newKey, 'admin');
@@ -1163,6 +1339,13 @@ const App = {
     async joinMess() {
         const code = document.getElementById('join-mess-code').value.trim().toUpperCase();
         if (!code || code.length !== 6) { this.toast('Enter 6-digit code', 'error'); return; }
+
+        // Prevent joining/creating a second mess (phantom entries are ignored/cleaned)
+        if (await this._hasValidMembership()) {
+            this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+            return;
+        }
+
         const btn = document.getElementById('join-mess-btn');
         btn.textContent = 'Joining...'; btn.disabled = true;
         try {
@@ -1177,13 +1360,18 @@ const App = {
                     if (snap.exists()) snap.forEach(s => { if (!mid) mid = s.key; });
                 } catch (e) { /* index missing and legacy query denied */ }
             }
-            if (!mid) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            if (!mid || !this._validMid(String(mid))) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            mid = String(mid);
             const existingSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
             if (existingSnap.exists()) {
                 const ed = existingSnap.val() || {};
-                if (ed.status === 'pending') { this.toast('Join request already pending', 'info'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
-                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: ed.joinedAt || Date.now() });
-                this._userMessesCacheUpdate(mid, 'member');
+                if (ed.status === 'pending') {
+                    // Direct join: activate any old pending request immediately.
+                    try { await db.ref(`messes/${mid}/members/${this.currentUser.uid}/status`).set('active'); } catch (e2) {}
+                }
+                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
+                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: ed.role || 'member', joinedAt: ed.joinedAt || Date.now() });
+                this._userMessesCacheUpdate(mid, ed.role || 'member');
                 this.toast('Joined!', 'success');
                 document.getElementById('join-mess-code').value = '';
                 this.enterMess(mid);
@@ -1191,13 +1379,17 @@ const App = {
                 return;
             }
             try {
-                await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'pending', joinedAt: Date.now() });
+                await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'active', joinedAt: Date.now() });
+                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
+                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: Date.now() });
             } catch (err) {
                 this.toast((err && err.code === 'PERMISSION_DENIED') ? 'Mess not found' : 'Error: ' + (err && err.message ? err.message : err), 'error');
                 return;
             }
-            this.toast('Request sent! Waiting for approval.', 'success');
+            this._userMessesCacheUpdate(mid, 'member');
+            this.toast('Joined successfully!', 'success');
             document.getElementById('join-mess-code').value = '';
+            this.enterMess(mid);
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
         finally { btn.textContent = 'Join Mess'; btn.disabled = false; }
     },
@@ -1211,6 +1403,13 @@ const App = {
         const savedPage = localStorage.getItem('mess_currentPage');
         const validPages = ['dashboard','members','bazaar','meals','balance','profile'];
         this.navigate(validPages.includes(savedPage) ? savedPage : 'dashboard');
+
+        // Boot update check (once per launch, after the UI is up) — shows the
+        // forced, non-skippable update dialog when a newer build is on Drive.
+        if (!this._bootUpdateChecked) {
+            this._bootUpdateChecked = true;
+            setTimeout(() => this.checkAppUpdate(), 3500);
+        }
     },
 
     navigate(page) {
@@ -1625,13 +1824,22 @@ const App = {
         try {
             const mSnap = await db.ref(`messes/${messId}/members`).once('value');
             const members = mSnap.val() || {};
+            const myUid = this.currentUser.uid;
             const updates = {};
-            Object.keys(members).forEach(uid => {
-                if (!uid.startsWith('member_')) updates[`users/${uid}/messes/${messId}`] = null;
-            });
-            if (this.messCode) updates[`messCodes/${this.messCode}`] = null;
             updates[`messes/${messId}`] = null;
+            if (this.messCode) updates[`messCodes/${this.messCode}`] = null;
+            updates[`users/${myUid}/messes/${messId}`] = null;
+            updates[`users/${myUid}/currentMess`] = null;
             await db.ref().update(updates);
+            // Best effort: clean the other members' indexes. Their own app also
+            // self-heals when it notices the mess/membership is gone.
+            Object.keys(members).forEach(uid => {
+                if (uid === myUid || uid.startsWith('member_')) return;
+                db.ref(`users/${uid}/messes/${messId}`).remove().catch(() => {});
+                db.ref(`users/${uid}/currentMess`).once('value').then(s => {
+                    if (s.val() === messId) return db.ref(`users/${uid}/currentMess`).remove();
+                }).catch(() => {});
+            });
             return true;
         } catch (e) { console.error('deleteMessFully error:', e); return false; }
     },
@@ -2340,9 +2548,14 @@ https://u2l.ai/MessManager
             const m = mSnap.val() || {};
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/status`] = 'active';
-            updates[`users/${uid}/messes/${this.messId}`] = { role: 'member', joinedAt: m.joinedAt || Date.now() };
                 updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: false, mealEntry: false, mealEdit: false, togglePerms: false, manage: false };
             await db.ref().update(updates);
+            // Give the member their mess index so they land straight in the app.
+            // Best effort: older/stricter rules may block an admin from writing
+            // another user's index, so approval must not fail because of it.
+            try {
+                await db.ref(`users/${uid}/messes/${this.messId}`).set({ role: 'member', joinedAt: m.joinedAt || Date.now() });
+            } catch (e) { /* member can still re-join with the mess code */ }
             this.toast(`${m.name || 'Member'} approved!`, 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
@@ -2357,8 +2570,8 @@ https://u2l.ai/MessManager
             if (!confirm(`Reject ${m.name || 'this member'}?`)) return;
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}`] = null;
-            updates[`users/${uid}/messes/${this.messId}`] = null;
             await db.ref().update(updates);
+            try { await db.ref(`users/${uid}/messes/${this.messId}`).remove(); } catch (e) { /* best effort */ }
             this.toast('Request rejected', 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
@@ -4316,6 +4529,22 @@ https://u2l.ai/MessManager
     },
 
     async loadProfile() {
+        // Ensure "Update App" button exists in the DOM
+        const moreSection = Array.from(document.querySelectorAll('.aprof-section')).find(s => s.querySelector('[data-lang-key="prof_more"]'));
+        if (moreSection) {
+            const card = moreSection.querySelector('.aprof-card');
+            if (card && !document.getElementById('row-update-app')) {
+                card.insertAdjacentHTML('beforeend', `
+                    <div class="aprof-row" id="row-update-app" onclick="App.checkUpdate()" style="display: flex !important; border-top: 1px solid var(--card-border);">
+                        <span class="material-icons-round">system_update</span>
+                        <span class="aprof-label" style="flex: 1; font-size: 15px; color: var(--text);">Update App</span>
+                        <span class="material-icons-round aprof-chevron" style="font-size: 20px !important; color: var(--text) !important; opacity: .3 !important;">chevron_right</span>
+                    </div>
+                `);
+            }
+        }
+        
+        setTimeout(() => this._applyPlatformRows(), 200); // Small delay to ensure DOM is ready
         if (!this.currentUser) return;
         const u = this.currentUser;
         document.getElementById('prof-name').textContent = u.displayName || 'User';
@@ -4587,15 +4816,20 @@ https://u2l.ai/MessManager
             navigator.clipboard?.writeText(text).then(() => this.toast('Copied!', 'success'));
         }
     },
-    getApp() {
-        window.location.href = 'https://u2l.ai/MessManager';
-    },
     _applyPlatformRows() {
         const native = !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+        console.log("Native platform check:", native);
+        
         const shareRow = document.getElementById('row-share-app');
-        const getRow = document.getElementById('row-get-app');
-        if (shareRow) shareRow.style.display = native ? '' : 'none';
-        if (getRow) getRow.style.display = native ? 'none' : '';
+        const updateRow = document.getElementById('row-update-app');
+        
+        console.log("Share row:", shareRow, "Update row:", updateRow);
+        
+        if (shareRow) shareRow.style.display = native ? 'flex' : 'none';
+        if (updateRow) {
+            updateRow.style.display = 'flex';
+            console.log("Forced updateRow display to flex");
+        }
     },
     _driveFiles: {
         about: { url: 'https://www.googleapis.com/drive/v3/files/1s45exjbMZhDk-Yt7oHSYjO6P_FiPs3YY?alt=media&key=AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8', key: 'cache_about_md' },
@@ -5546,10 +5780,10 @@ https://u2l.ai/MessManager
     },
     signOutConfirm() {
         const lang = this._currentLang || 'en';
-        const msg = lang === 'bn' ? 'আপনি কি সত্যিই লগ আউট করতে চান?' : 'Are you sure you want to log out?';
+        const msg = lang === 'bn' ? 'আপনি কি সত্যিই সাইন আউট করতে চান?' : 'Are you sure you want to sign out?';
         const body = document.getElementById('modal-body');
-        body.innerHTML = `<p style="margin:0;font-size:15px">${msg}</p><div class="modal-confirm-actions"><button class="btn-cancel" onclick="App.closeModal()">${lang === 'bn' ? 'বাতিল' : 'Cancel'}</button><button class="btn-danger" onclick="App.closeModal();auth.signOut()">${lang === 'bn' ? 'লগ আউট' : 'Log Out'}</button></div>`;
-        document.getElementById('modal-title').textContent = lang === 'bn' ? 'লগ আউট' : 'Log Out';
+        body.innerHTML = `<p style="margin:0;font-size:15px">${msg}</p><div class="modal-confirm-actions"><button class="btn-cancel" onclick="App.closeModal()">${lang === 'bn' ? 'বাতিল' : 'Cancel'}</button><button class="btn-danger" onclick="App.closeModal();auth.signOut()">${lang === 'bn' ? 'সাইন আউট' : 'Sign out'}</button></div>`;
+        document.getElementById('modal-title').textContent = lang === 'bn' ? 'সাইন আউট' : 'Sign out';
         this.openModal();
         document.getElementById('modal').classList.add('confirm-mode');
     },
@@ -5659,20 +5893,196 @@ https://u2l.ai/MessManager
     },
     openModal() { document.getElementById('modal').classList.remove('confirm-mode'); document.getElementById('modal-overlay').classList.add('active'); },
     closeModal() { document.getElementById('modal-overlay').classList.remove('active'); },
-    openDialog(title, bodyHtml, actions = []) {
+    openDialog(title, bodyHtml, actions = [], canClose = true) {
         document.getElementById('dlgTitle').textContent = title;
         document.getElementById('dlgBody').innerHTML = bodyHtml;
-        document.getElementById('dlgActions').innerHTML = actions.map(a =>
-            `<button class="btn ${a.cls || 'secondary'}" data-act="${a.key}">${a.label}</button>`).join('');
+        document.getElementById('dlgActions').innerHTML = actions.map(a => {
+            let extra = a.cls || 'secondary';
+            if (a.cls === '' || a.cls === 'primary') extra = 'primary primary-action';
+            else if (a.cls === 'danger') extra = 'danger danger-action';
+            return `<button class="btn ${extra}" data-act="${a.key}">${this.esc(a.label)}</button>`;
+        }).join('');
         document.getElementById('dlg').hidden = false;
         document.getElementById('dlgActions').onclick = ev => {
             const btn = ev.target.closest('[data-act]'); if (!btn) return;
             const act = actions.find(a => a.key === btn.dataset.act);
             if (act && act.fn) act.fn(btn);
         };
-        document.getElementById('dlg').onclick = e => { if (e.target.id === 'dlg') this.closeDialog(); };
+        const dlg = document.getElementById('dlg');
+        dlg.onclick = e => { if (canClose && e.target.id === 'dlg') this.closeDialog(); };
     },
-    closeDialog() { document.getElementById('dlg').hidden = true; },
+    closeDialog() {
+        // Block dismissal while the forced update dialog is showing — the only
+        // way out is the Update button (same as Meter Manager).
+        if (this._updatingForUpdate) return;
+        document.getElementById('dlg').hidden = true;
+    },
+
+    /* ---------- app update · Google Drive scan (same flow as Meter Manager) ---------- */
+
+    // Folder where the release APKs live (the "Android" subfolder of the store).
+    _driveFolderId: '1jruC0NSqZjxHVJ6IkgoLDt7TIgbV9o1h',
+    _driveApiKey: 'AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8',
+    // Forced-update flag: blocks closeDialog(), backdrop clicks and the back button.
+    _updatingForUpdate: false,
+
+    /* Current installed build (versionCode) — read from the native package info
+       and the profile version string, taking the highest value so a stale source
+       (e.g. a page string not yet refreshed right after an update) can never make
+       the app think it is older than it really is. */
+    async _currentBuild() {
+        let best = 0;
+        try {
+            const info = await window.Capacitor?.Plugins?.App?.getInfo?.();
+            if (info && info.build) best = Math.max(best, parseInt(info.build, 10) || 0);
+        } catch (e) { /* fall through */ }
+        const m = (document.querySelector('[data-lang-key="prof_version"]')?.textContent || '')
+            .match(/build\s+(\d+)/i);
+        if (m) best = Math.max(best, parseInt(m[1], 10) || 0);
+        return best;
+    },
+
+    /* Scans the Drive release folder and resolves with
+       { ok, available, latestName, downloadUrl, fileId, error }. */
+    async _scanDriveForUpdate() {
+        const url = `https://www.googleapis.com/drive/v3/files?q='${this._driveFolderId}'+in+parents+and+trashed=false&fields=files(id,name)&pageSize=50&orderBy=modifiedTime+desc&key=${this._driveApiKey}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.error) return { ok: false, error: data.error.message || 'Drive error' };
+            const files = data.files || [];
+
+            const current = await this._currentBuild();
+            let latest = null, latestVersion = '', maxBuild = 0;
+
+            files.forEach(file => {
+                if (!file.name.endsWith('.apk')) return;
+                if (file.name.indexOf('Mess Manager') !== 0) return; // only this app
+                const m = file.name.match(/build_(\d+)/);
+                if (!m) return;
+                const build = parseInt(m[1], 10);
+                if (build > maxBuild) {
+                    maxBuild = build;
+                    latest = file;
+                    // "Mess Manager_com.mahmuduls.messmanager_v1.6.4_build_747.apk" → "1.6.4"
+                    const vm = file.name.match(/_v(\d[\d.]*)_build_\d+/);
+                    latestVersion = vm ? vm[1] : '';
+                }
+            });
+
+            if (!latest) return { ok: true, available: false };
+
+            const available = maxBuild > current;
+            return {
+                ok: true,
+                available,
+                build: maxBuild,
+                version: latestVersion,
+                // Show the version number (e.g. "1.6.4"), not the build number.
+                latestName: latestVersion || `Build ${maxBuild}`,
+                fileId: latest.id,
+                fileName: latest.name,
+                downloadUrl: `https://www.googleapis.com/drive/v3/files/${latest.id}?alt=media&key=${this._driveApiKey}`
+            };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'network error' };
+        }
+    },
+
+    /* Boot check — shows the forced popup when a newer build exists on Drive. */
+    async checkAppUpdate() {
+        if (this._updatingForUpdate) return;
+        const info = await this._scanDriveForUpdate();
+        if (info && info.ok && info.available) this.showForcedUpdatePopup(info);
+    },
+
+    /* Settings "Update App" row: toast "checking" → scan → popup / latest toast. */
+    async checkUpdate() {
+        if (this._updatingForUpdate) return;
+        this.toast('Checking for updates...', 'info');
+        const info = await this._scanDriveForUpdate();
+        if (info && info.ok && info.available) {
+            this.showForcedUpdatePopup(info);
+        } else if (info && info.ok) {
+            this.toast('You are using the latest version', 'success');
+        } else {
+            this.toast('Update check failed: ' + ((info && info.error) || 'unknown error'), 'error');
+        }
+    },
+
+    /* Forced (non-dismissible) update dialog — only shown when a newer build exists. */
+    showForcedUpdatePopup(info) {
+        // Prevent duplicate popups
+        if (document.getElementById('dlg').hidden === false) return;
+
+        this._updatingForUpdate = true;
+
+        this.openDialog(
+            '',
+            `<div class="body-text" style="text-align:center; padding: 2px 0;">
+               <img src="app-icon.png" style="width: 36px; height: 36px; margin: 0 auto 2px auto; display: block;">
+               <p class="body-text" style="margin: 0; font-size: 15px; font-weight: bold;">Update Available</p>
+               <p class="body-text" style="margin: 2px 0 2px 0; font-size: 12.5px; color: #64748b;">A new version (${this.esc(info.latestName || '')}) is available.</p>
+             </div>`,
+            [{
+                key: 'update',
+                label: 'Update',
+                cls: 'primary',
+                fn: (btn) => {
+                    this._styleUpdateButton(btn);
+                    btn.textContent = 'Downloading...';
+                    this.startUpdateDownload(info, percent => {
+                        btn.textContent = percent < 100 ? 'Downloading...' : 'Installing...';
+                    });
+                }
+            }],
+            false // canClose = false → backdrop click does nothing
+        );
+
+        // Disable background click for forced update (no way out except Update)
+        const dlg = document.getElementById('dlg');
+        dlg.onclick = e => { if (e.target.id === 'dlg') return; };
+
+        // Force button to be full width blue in CSS
+        setTimeout(() => {
+            const btn = document.querySelector('#dlgActions .primary-action');
+            if (btn) this._styleUpdateButton(btn);
+        }, 50);
+    },
+
+    _styleUpdateButton(btn) {
+        btn.style.width = '90%';
+        btn.style.display = 'block';
+        btn.style.margin = '0 auto 2px auto';
+        btn.style.padding = '8px';
+        btn.style.borderRadius = '12px';
+        btn.style.backgroundColor = '#2563eb';
+        btn.style.color = '#ffffff';
+        btn.style.border = 'none';
+    },
+
+    startUpdateDownload(info, progressCb) {
+        if (window.AndroidBridge && typeof window.AndroidBridge.downloadAndInstall === 'function') {
+            window.AndroidBridge.downloadAndInstall(info.downloadUrl);
+
+            // Poll native download progress: <100 → Downloading..., 100 → Installing...
+            if (this._updateProgressTimer) clearInterval(this._updateProgressTimer);
+            this._updateProgressTimer = setInterval(() => {
+                let p = 100;
+                try {
+                    if (window.AndroidBridge && typeof window.AndroidBridge.getDownloadProgress === 'function') {
+                        p = parseInt(window.AndroidBridge.getDownloadProgress(), 10) || 0;
+                    }
+                } catch (e) { p = 100; }
+                if (progressCb) progressCb(p);
+                if (p >= 100) clearInterval(this._updateProgressTimer);
+            }, 1000);
+        } else {
+            try { location.href = info.downloadUrl; } catch (e) {}
+            if (progressCb) progressCb(100);
+        }
+    },
+
 
     esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
 
@@ -5750,3 +6160,10 @@ https://u2l.ai/MessManager
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
+
+
+
+
+
+

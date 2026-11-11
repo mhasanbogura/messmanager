@@ -3636,3 +3636,20 @@ img, canvas { max-width: 100%; }
 #app-screen.on-adddeposit .main-content { padding-bottom: calc(var(--nav-top) + var(--g-btm) * 2 + var(--foot-h)) !important; }
 #app-screen.on-menu .main-content { padding-bottom: calc(24px + var(--sab) + var(--mfab-h) + var(--g-btm)) !important; }
 .aam-body, .abn-body, .amenu-body { padding-bottom: 0 !important; }
+
+/* Mess select list: leave/remove button */
+.mess-item-leave {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    margin-left: auto;
+    color: #E53935;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.mess-item-leave:active { background: rgba(229, 57, 53, 0.12); }
+.mess-item-leave .material-icons-round { font-size: 22px; }

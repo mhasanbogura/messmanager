@@ -460,7 +460,6 @@ const App = {
                 ]);
             };
             firebase.database.Reference.prototype.set = _writeTimeout(_origSet);
-            firebase.database.Reference.prototype.push = _writeTimeout(_origPush);
             firebase.database.Reference.prototype.remove = _writeTimeout(_origRemove);
             firebase.database.Reference.prototype.update = _writeTimeout(_origUpdate);
         } catch (e) {}
@@ -787,6 +786,10 @@ const App = {
         catch (e) { this.toast(e.message, 'error'); }
     },
 
+    _validMid(mid) {
+        return typeof mid === 'string' && mid.length > 0 && mid !== 'undefined' && mid !== 'null';
+    },
+
     async loadMyMesses() {
         if (!this.currentUser) return;
         const cacheKey = `user_messes_${this.currentUser.uid}`;
@@ -812,13 +815,75 @@ const App = {
                 } catch (e) {}
             }
         }
+        // Verify each entry is a real membership; drop phantom entries (e.g. a mess
+        // that was deleted, or an old index left over from a previous bug) so they
+        // can never block joining/creating a mess.
+        if (!offline && Object.keys(data).length) {
+            const stale = [];
+            for (const mid of Object.keys(data)) {
+                try {
+                    const ms = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
+                    if (!ms.exists()) stale.push(mid);
+                } catch (e) {
+                    if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
+                }
+            }
+            if (stale.length) {
+                stale.forEach(mid => { delete data[mid]; this._userMessesCacheUpdate(mid, null); });
+                const patch = {};
+                stale.forEach(mid => { patch[`users/${this.currentUser.uid}/messes/${mid}`] = null; });
+                patch[`users/${this.currentUser.uid}/currentMess`] = Object.keys(data)[0] || null;
+                db.ref().update(patch).catch(() => {});
+                try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            }
+        }
+        // Sanitize: drop corrupt mess ids (e.g. the literal "undefined") whether they
+        // came from the local cache or fresh from the database, and clean the DB entry.
+        const badIds = Object.keys(data).filter(k => !this._validMid(k));
+        if (badIds.length) {
+            badIds.forEach(k => { delete data[k]; });
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            if (!offline) {
+                const patch = {};
+                badIds.forEach(k => { patch[`users/${this.currentUser.uid}/messes/${k}`] = null; });
+                db.ref().update(patch).catch(() => {});
+            }
+        }
         const ids = Object.keys(data);
-        if (ids.length === 1) { this.enterMess(ids[0], { skipMemberCheck: true }); return; }
+        // Enforce one mess per user: if several exist, keep the current/most recent
+        // and remove the rest from both the local cache and the database.
         if (ids.length > 1) {
+            let keep = this.messId && data[this.messId] ? this.messId : null;
+            if (!keep) {
+                keep = ids.slice().sort((a, b) => ((data[b] && data[b].joinedAt) || 0) - ((data[a] && data[a].joinedAt) || 0))[0];
+            }
+            const drop = {};
+            ids.forEach(k => {
+                if (k === keep) return;
+                delete data[k];
+                drop[`users/${this.currentUser.uid}/messes/${k}`] = null;
+            });
+            try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+            if (!offline) { db.ref().update(drop).catch(() => {}); db.ref(`users/${this.currentUser.uid}/currentMess`).set(keep).catch(() => {}); }
+        }
+        const finalIds = Object.keys(data);
+        if (finalIds.length === 1) {
+            const onlyMid = finalIds[0];
+            let messOk = true;
+            if (!offline) {
+                try {
+                    const ms = await db.ref(`messes/${onlyMid}/settings`).once('value');
+                    messOk = ms.exists();
+                } catch (e) { messOk = true; }
+            }
+            if (messOk) { this.enterMess(onlyMid); return; }
+            // Mess data is gone/unreadable: show the list so the user can remove it.
+        }
+        if (finalIds.length > 0) {
             this.showScreen('mess-select-screen');
             const div = document.getElementById('my-messes-list');
             let html = '<div class="card-body">';
-            for (const mid of ids) {
+            for (const mid of finalIds) {
                 let s = {};
                 try { s = JSON.parse(localStorage.getItem(`mess_settings_${mid}`) || '{}'); } catch (e) {}
                 if (!offline) {
@@ -832,9 +897,10 @@ const App = {
                         } catch (e) {}
                     }
                 }
-                html += `<div class="mess-item" onclick="App.enterMess('${mid}', {skipMemberCheck:true})">
+                html += `<div class="mess-item" onclick="App.enterMess('${mid}')">
                     <div class="mess-item-icon"><span class="material-icons-round">home</span></div>
-                    <div class="mess-item-info"><h4>${this.esc(s.messName || 'Unnamed')}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
+                    <div class="mess-item-info"><h4>${this.esc(s.messName || (s.messCode ? 'Unnamed' : 'Mess unavailable'))}</h4><p>${data[mid].role || 'member'} | ${s.messCode || ''}</p></div>
+                    <button class="mess-item-leave" title="${this._currentLang === 'bn' ? 'মেস ছাড়ুন' : 'Leave mess'}" onclick="event.stopPropagation();App.leaveFromSelect('${mid}')"><span class="material-icons-round">logout</span></button>
                     <span class="material-icons-round" style="color:var(--text-secondary)">chevron_right</span>
                 </div>`;
             }
@@ -849,7 +915,7 @@ const App = {
     },
 
     _userMessesCacheUpdate(mid, role) {
-        if (!this.currentUser || !mid) return;
+        if (!this.currentUser || !this._validMid(mid)) return;
         try {
             const key = `user_messes_${this.currentUser.uid}`;
             const c = JSON.parse(localStorage.getItem(key) || '{}');
@@ -857,6 +923,83 @@ const App = {
             else delete c[mid];
             localStorage.setItem(key, JSON.stringify(c));
         } catch (e) {}
+    },
+
+    // True only if the user currently belongs to a mess that still exists and has
+    // a member record for them. Phantom/leftover index entries are purged.
+    async _hasValidMembership() {
+        if (!this.currentUser) return false;
+        const uid = this.currentUser.uid;
+        let data = {};
+        try { data = (await db.ref(`users/${uid}/messes`).once('value')).val() || {}; } catch (e) { return false; }
+        const ids = Object.keys(data).filter(k => this._validMid(k));
+        if (!ids.length) return false;
+        const stale = [];
+        for (const mid of ids) {
+            try {
+                const s = await db.ref(`messes/${mid}/members/${uid}`).once('value');
+                if (!s.exists()) stale.push(mid);
+            } catch (e) {
+                if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
+            }
+        }
+        if (stale.length) {
+            const patch = {};
+            stale.forEach(mid => { patch[`users/${uid}/messes/${mid}`] = null; this._userMessesCacheUpdate(mid, null); });
+            if (stale.length === ids.length) patch[`users/${uid}/currentMess`] = null;
+            db.ref().update(patch).catch(() => {});
+        }
+        return stale.length < ids.length;
+    },
+
+    leaveFromSelect(mid) {
+        if (!this.currentUser || !this._validMid(mid)) return;
+        const bn = this._currentLang === 'bn';
+        this.showConfirm(
+            bn ? 'মেস ছাড়ুন' : 'Leave Mess',
+            bn ? 'আপনি কি এই মেস ছাড়তে চান?' : 'Are you sure you want to leave this mess?',
+            ok => { if (ok) this._leaveFromSelect(mid); }
+        );
+    },
+
+    async _leaveFromSelect(mid) {
+        if (!this.currentUser) return;
+        const uid = this.currentUser.uid;
+        let isMember = false;
+        try {
+            const m = await db.ref(`messes/${mid}/members/${uid}`).once('value');
+            isMember = m.exists();
+        } catch (e) { isMember = false; }
+        if (isMember) {
+            // Reuse the normal leave flow (manager step-down, last-member delete).
+            let role = 'member';
+            try { role = (await db.ref(`messes/${mid}/members/${uid}/role`).once('value')).val() || 'member'; } catch (e) {}
+            this.messId = mid;
+            this.userRole = role;
+            try {
+                const cached = JSON.parse(localStorage.getItem(`mess_settings_${mid}`) || 'null');
+                this.messCode = cached && cached.messCode ? cached.messCode : null;
+                this.messName = cached && cached.messName ? cached.messName : null;
+            } catch (e) { this.messCode = null; this.messName = null; }
+            await this._doLeaveMess(role === 'admin');
+            return;
+        }
+        // Not a real member — just remove the stale index entry.
+        try {
+            const patch = {};
+            patch[`users/${uid}/messes/${mid}`] = null;
+            const cm = await db.ref(`users/${uid}/currentMess`).once('value');
+            if (cm.val() === mid) patch[`users/${uid}/currentMess`] = null;
+            await db.ref().update(patch);
+        } catch (e) { /* best effort */ }
+        this._userMessesCacheUpdate(mid, null);
+        try {
+            localStorage.removeItem(`mess_settings_${mid}`);
+            localStorage.removeItem(`mess_role_${mid}`);
+        } catch (e) {}
+        this.toast(this._currentLang === 'bn' ? 'মেস ছাড়া হয়েছে' : 'Left mess', 'success');
+        this.messId = null; this.messCode = null; this.messName = null;
+        this.loadMyMesses();
     },
 
     _setupMessSelectPullRefresh() {
@@ -962,6 +1105,12 @@ const App = {
     },
 
     async enterMess(mid, opts) {
+        if (!this._validMid(mid)) {
+            try { localStorage.removeItem('current_mess_id'); } catch (e) {}
+            this.messId = null;
+            this.toast('Invalid mess. Please create or join a mess.', 'error');
+            return this.loadMyMesses();
+        }
         this.messId = mid;
         this.messCode = null;
         const settingsCacheKey = `mess_settings_${mid}`;
@@ -970,15 +1119,24 @@ const App = {
         try {
             if (!offline) {
                 if (!opts || !opts.skipMemberCheck) {
-                    const memberSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
-                    if (!memberSnap.exists()) {
+                    let memberSnap = null;
+                    let denied = false;
+                    try {
+                        memberSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
+                    } catch (e2) {
+                        denied = e2 && e2.code === 'PERMISSION_DENIED';
+                    }
+                    if (denied || (memberSnap && !memberSnap.exists())) {
                         try { await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).remove(); } catch (e2) {}
+                        try { await db.ref(`users/${this.currentUser.uid}/currentMess`).remove(); } catch (e2) {}
                         this._userMessesCacheUpdate(mid, null);
                         this.toast('You are no longer a member of this mess', 'error');
                         this.messId = null;
                         return this.loadMyMesses();
                     }
                 }
+                // Remember the single active mess for this user.
+                db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid).catch(() => {});
                 let cachedSettings = null;
                 try { cachedSettings = JSON.parse(localStorage.getItem(settingsCacheKey) || 'null'); } catch (e2) {}
                 if (cachedSettings) {
@@ -1128,6 +1286,7 @@ const App = {
             updates[`messes/${mid}/members/${uid}`] = null;
             updates[`messes/${mid}/permissions/${uid}`] = null;
             updates[`users/${uid}/messes/${mid}`] = null;
+            updates[`users/${uid}/currentMess`] = null;
             await db.ref().update(updates);
             this._userMessesCacheUpdate(mid, null);
             if (stepDown) {
@@ -1143,17 +1302,30 @@ const App = {
     async createMess() {
         const name = document.getElementById('create-mess-name').value.trim();
         if (!name) { this.toast('Enter mess name', 'error'); return; }
+
+        // Prevent joining/creating a second mess (phantom entries are ignored/cleaned)
+        if (await this._hasValidMembership()) {
+            this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+            return;
+        }
+
         const btn = document.getElementById('create-mess-btn');
         btn.textContent = 'Creating...'; btn.disabled = true;
         try {
             const code = this.genCode(6);
             const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Connection timeout')), 15000));
             const newKey = db.ref('messes').push().key;
+            if (!newKey || typeof newKey !== 'string' || newKey === 'undefined' || newKey === 'null') {
+                this.toast('Error: could not generate mess id. Please try again.', 'error');
+                btn.textContent = 'Create Mess'; btn.disabled = false;
+                return;
+            }
             const write = db.ref(`messes/${newKey}`).set({
                 settings: { messName: name, messCode: code, owner: this.currentUser.uid, createdAt: Date.now() },
                 members: { [this.currentUser.uid]: { name: this.currentUser.displayName || 'Admin', email: this.currentUser.email, role: 'admin', joinedAt: Date.now() } }
             });
             await Promise.race([write, timeout]);
+            await Promise.race([db.ref(`users/${this.currentUser.uid}/currentMess`).set(newKey), timeout]);
             await Promise.race([db.ref(`users/${this.currentUser.uid}/messes/${newKey}`).set({ role: 'admin', joinedAt: Date.now() }), timeout]);
             db.ref(`messCodes/${code}`).set(newKey).catch(() => {});
             this._userMessesCacheUpdate(newKey, 'admin');
@@ -1167,6 +1339,13 @@ const App = {
     async joinMess() {
         const code = document.getElementById('join-mess-code').value.trim().toUpperCase();
         if (!code || code.length !== 6) { this.toast('Enter 6-digit code', 'error'); return; }
+
+        // Prevent joining/creating a second mess (phantom entries are ignored/cleaned)
+        if (await this._hasValidMembership()) {
+            this.toast('You can only belong to one mess at a time. Leave your current mess first.', 'error');
+            return;
+        }
+
         const btn = document.getElementById('join-mess-btn');
         btn.textContent = 'Joining...'; btn.disabled = true;
         try {
@@ -1181,13 +1360,18 @@ const App = {
                     if (snap.exists()) snap.forEach(s => { if (!mid) mid = s.key; });
                 } catch (e) { /* index missing and legacy query denied */ }
             }
-            if (!mid) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            if (!mid || !this._validMid(String(mid))) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
+            mid = String(mid);
             const existingSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
             if (existingSnap.exists()) {
                 const ed = existingSnap.val() || {};
-                if (ed.status === 'pending') { this.toast('Join request already pending', 'info'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
-                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: ed.joinedAt || Date.now() });
-                this._userMessesCacheUpdate(mid, 'member');
+                if (ed.status === 'pending') {
+                    // Direct join: activate any old pending request immediately.
+                    try { await db.ref(`messes/${mid}/members/${this.currentUser.uid}/status`).set('active'); } catch (e2) {}
+                }
+                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
+                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: ed.role || 'member', joinedAt: ed.joinedAt || Date.now() });
+                this._userMessesCacheUpdate(mid, ed.role || 'member');
                 this.toast('Joined!', 'success');
                 document.getElementById('join-mess-code').value = '';
                 this.enterMess(mid);
@@ -1195,13 +1379,17 @@ const App = {
                 return;
             }
             try {
-                await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'pending', joinedAt: Date.now() });
+                await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'active', joinedAt: Date.now() });
+                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
+                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: Date.now() });
             } catch (err) {
                 this.toast((err && err.code === 'PERMISSION_DENIED') ? 'Mess not found' : 'Error: ' + (err && err.message ? err.message : err), 'error');
                 return;
             }
-            this.toast('Request sent! Waiting for approval.', 'success');
+            this._userMessesCacheUpdate(mid, 'member');
+            this.toast('Joined successfully!', 'success');
             document.getElementById('join-mess-code').value = '';
+            this.enterMess(mid);
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
         finally { btn.textContent = 'Join Mess'; btn.disabled = false; }
     },
@@ -1636,13 +1824,22 @@ const App = {
         try {
             const mSnap = await db.ref(`messes/${messId}/members`).once('value');
             const members = mSnap.val() || {};
+            const myUid = this.currentUser.uid;
             const updates = {};
-            Object.keys(members).forEach(uid => {
-                if (!uid.startsWith('member_')) updates[`users/${uid}/messes/${messId}`] = null;
-            });
-            if (this.messCode) updates[`messCodes/${this.messCode}`] = null;
             updates[`messes/${messId}`] = null;
+            if (this.messCode) updates[`messCodes/${this.messCode}`] = null;
+            updates[`users/${myUid}/messes/${messId}`] = null;
+            updates[`users/${myUid}/currentMess`] = null;
             await db.ref().update(updates);
+            // Best effort: clean the other members' indexes. Their own app also
+            // self-heals when it notices the mess/membership is gone.
+            Object.keys(members).forEach(uid => {
+                if (uid === myUid || uid.startsWith('member_')) return;
+                db.ref(`users/${uid}/messes/${messId}`).remove().catch(() => {});
+                db.ref(`users/${uid}/currentMess`).once('value').then(s => {
+                    if (s.val() === messId) return db.ref(`users/${uid}/currentMess`).remove();
+                }).catch(() => {});
+            });
             return true;
         } catch (e) { console.error('deleteMessFully error:', e); return false; }
     },
@@ -2351,9 +2548,14 @@ https://u2l.ai/MessManager
             const m = mSnap.val() || {};
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/status`] = 'active';
-            updates[`users/${uid}/messes/${this.messId}`] = { role: 'member', joinedAt: m.joinedAt || Date.now() };
                 updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: false, mealEntry: false, mealEdit: false, togglePerms: false, manage: false };
             await db.ref().update(updates);
+            // Give the member their mess index so they land straight in the app.
+            // Best effort: older/stricter rules may block an admin from writing
+            // another user's index, so approval must not fail because of it.
+            try {
+                await db.ref(`users/${uid}/messes/${this.messId}`).set({ role: 'member', joinedAt: m.joinedAt || Date.now() });
+            } catch (e) { /* member can still re-join with the mess code */ }
             this.toast(`${m.name || 'Member'} approved!`, 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
@@ -2368,8 +2570,8 @@ https://u2l.ai/MessManager
             if (!confirm(`Reject ${m.name || 'this member'}?`)) return;
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}`] = null;
-            updates[`users/${uid}/messes/${this.messId}`] = null;
             await db.ref().update(updates);
+            try { await db.ref(`users/${uid}/messes/${this.messId}`).remove(); } catch (e) { /* best effort */ }
             this.toast('Request rejected', 'success');
             this.loadDashboard();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
@@ -4327,6 +4529,22 @@ https://u2l.ai/MessManager
     },
 
     async loadProfile() {
+        // Ensure "Update App" button exists in the DOM
+        const moreSection = Array.from(document.querySelectorAll('.aprof-section')).find(s => s.querySelector('[data-lang-key="prof_more"]'));
+        if (moreSection) {
+            const card = moreSection.querySelector('.aprof-card');
+            if (card && !document.getElementById('row-update-app')) {
+                card.insertAdjacentHTML('beforeend', `
+                    <div class="aprof-row" id="row-update-app" onclick="App.checkUpdate()" style="display: flex !important; border-top: 1px solid var(--card-border);">
+                        <span class="material-icons-round">system_update</span>
+                        <span class="aprof-label" style="flex: 1; font-size: 15px; color: var(--text);">Update App</span>
+                        <span class="material-icons-round aprof-chevron" style="font-size: 20px !important; color: var(--text) !important; opacity: .3 !important;">chevron_right</span>
+                    </div>
+                `);
+            }
+        }
+        
+        setTimeout(() => this._applyPlatformRows(), 200); // Small delay to ensure DOM is ready
         if (!this.currentUser) return;
         const u = this.currentUser;
         document.getElementById('prof-name').textContent = u.displayName || 'User';
@@ -4598,15 +4816,20 @@ https://u2l.ai/MessManager
             navigator.clipboard?.writeText(text).then(() => this.toast('Copied!', 'success'));
         }
     },
-    getApp() {
-        window.location.href = 'https://u2l.ai/MessManager';
-    },
     _applyPlatformRows() {
         const native = !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+        console.log("Native platform check:", native);
+        
         const shareRow = document.getElementById('row-share-app');
-        const getRow = document.getElementById('row-get-app');
-        if (shareRow) shareRow.style.display = native ? '' : 'none';
-        if (getRow) getRow.style.display = native ? 'none' : '';
+        const updateRow = document.getElementById('row-update-app');
+        
+        console.log("Share row:", shareRow, "Update row:", updateRow);
+        
+        if (shareRow) shareRow.style.display = native ? 'flex' : 'none';
+        if (updateRow) {
+            updateRow.style.display = 'flex';
+            console.log("Forced updateRow display to flex");
+        }
     },
     _driveFiles: {
         about: { url: 'https://www.googleapis.com/drive/v3/files/1s45exjbMZhDk-Yt7oHSYjO6P_FiPs3YY?alt=media&key=AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8', key: 'cache_about_md' },
