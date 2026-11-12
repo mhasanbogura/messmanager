@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Mess Manager</title>
     <link rel="icon" type="image/png" href="app-icon.png?v=1.4.40">
-    <link rel="stylesheet" href="style.css?v=202611111030">
+    <link rel="stylesheet" href="style.css?v=202611121200">
     <link href="fonts/material-icons.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -612,23 +612,23 @@
                             <div class="aprof-text">
                                 <span class="aprof-label" data-lang-key="prof_device_theme">Device Theme</span>
                             </div>
-                            <label class="aprof-toggle"><input type="checkbox" id="prof-device-theme" onchange="App.toggleDeviceTheme(this.checked)"><span class="aprof-toggle-slider"></span></label>
+                            <label class="toggle"><input type="checkbox" id="prof-device-theme" onchange="App.toggleDeviceTheme(this.checked)"><span class="toggle-slider"></span></label>
                         </div>
                         <div class="aprof-row">
                             <span class="material-icons-round">dark_mode</span>
                             <div class="aprof-text">
                                 <span class="aprof-label" data-lang-key="prof_oled_theme">OLED Theme</span>
                             </div>
-                            <label class="aprof-toggle"><input type="checkbox" id="prof-oled-theme" onchange="App.toggleOledTheme(this.checked)"><span class="aprof-toggle-slider"></span></label>
+                            <label class="toggle"><input type="checkbox" id="prof-oled-theme" onchange="App.toggleOledTheme(this.checked)"><span class="toggle-slider"></span><span class="toggle-ico toggle-ico-off"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="#fff" stroke="none"/><path d="M12 5.4V2.2M12 18.6v3.2M5.4 12H2.2M18.6 12h3.2M16.67 7.33 18.93 5.07M7.33 7.33 5.07 5.07M7.33 16.67 5.07 18.93M16.67 16.67 18.93 18.93"/></svg></span><span class="toggle-ico toggle-ico-on"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg></span></label>
                         </div>
                         <div class="aprof-row">
-                            <span class="material-icons-round">language</span>
+                            <svg class="aprof-ico" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04M18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12m-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
                             <div class="aprof-text">
                                 <span class="aprof-label" data-lang-key="prof_language">Language</span>
                             </div>
-                            <div class="lang-toggle" id="prof-lang-toggle">
-                                <span class="lt-seg" onclick="App.setLanguage('bn')">BD</span>
-                                <span class="lt-seg active" onclick="App.setLanguage('en')">EN</span>
+                            <div class="lang-toggle" id="prof-lang-toggle" data-lang="en" onclick="App.setLanguage((localStorage.getItem('mess_lang') || 'en') === 'bn' ? 'en' : 'bn')">
+                                <span class="lt-knob"></span>
+                                <span class="lt-text">EN</span>
                             </div>
                         </div>
                         </div>
@@ -723,6 +723,6 @@
     <script src="firebase-auth-compat.js" defer></script>
     <script src="firebase-database-compat.js" defer></script>
     <script src="firebase-config.js" defer></script>
-    <script src="app.js?v=202611111030" defer></script>
+    <script src="app.js?v=202611121200" defer></script>
 </body>
 </html>

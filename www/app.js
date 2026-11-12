@@ -4578,9 +4578,9 @@ https://u2l.ai/MessManager
         const toggle = document.getElementById('prof-lang-toggle');
         if (toggle) {
             const lang = localStorage.getItem('mess_lang') || 'en';
-            const labels = toggle.querySelectorAll('.lt-seg');
-            if (labels[0]) labels[0].classList.toggle('active', lang === 'bn');
-            if (labels[1]) labels[1].classList.toggle('active', lang === 'en');
+            toggle.dataset.lang = lang;
+            const txt = toggle.querySelector('.lt-text');
+            if (txt) txt.textContent = lang === 'bn' ? 'BN' : 'EN';
         }
     },
 
@@ -4799,9 +4799,9 @@ https://u2l.ai/MessManager
         localStorage.setItem('mess_lang', lang);
         const toggle = document.getElementById('prof-lang-toggle');
         if (toggle) {
-            const labels = toggle.querySelectorAll('.lt-seg');
-            if (labels[0]) labels[0].classList.toggle('active', lang === 'bn');
-            if (labels[1]) labels[1].classList.toggle('active', lang === 'en');
+            toggle.dataset.lang = lang;
+            const txt = toggle.querySelector('.lt-text');
+            if (txt) txt.textContent = lang === 'bn' ? 'BN' : 'EN';
         }
         this.applyLanguage();
         this.toast(lang === 'en' ? 'Language: English' : 'Language: বাংলা', 'info');
