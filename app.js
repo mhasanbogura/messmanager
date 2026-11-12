@@ -186,7 +186,7 @@ const App = {
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
-        prof_version:'Version 1.6.8 (build 759)',
+        prof_version:'Version 1.6.9 (build 762)',
         prof_update:'Update App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -359,7 +359,7 @@ const App = {
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
-            prof_version:'ভার্সন 1.6.8 (বিল্ড 759)',
+            prof_version:'ভার্সন 1.6.9 (বিল্ড 762)',
             prof_update:'অ্যাপ আপডেট',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -6030,9 +6030,9 @@ https://u2l.ai/MessManager
                 cls: 'primary',
                 fn: (btn) => {
                     this._styleUpdateButton(btn);
-                    btn.textContent = 'Downloading...';
+                    btn.textContent = 'Downloading... 0%';
                     this.startUpdateDownload(info, percent => {
-                        btn.textContent = percent < 100 ? 'Downloading...' : 'Installing...';
+                        btn.textContent = percent < 100 ? `Downloading... ${percent}%` : 'Installing...';
                     });
                 }
             }],
@@ -6065,9 +6065,9 @@ https://u2l.ai/MessManager
         if (window.AndroidBridge && typeof window.AndroidBridge.downloadAndInstall === 'function') {
             window.AndroidBridge.downloadAndInstall(info.downloadUrl);
 
-            // Poll native download progress: <100 → Downloading..., 100 → Installing...
+            // Poll native download progress: <100 → Downloading... x%, 100 → Installing...
             if (this._updateProgressTimer) clearInterval(this._updateProgressTimer);
-            this._updateProgressTimer = setInterval(() => {
+            const poll = () => {
                 let p = 100;
                 try {
                     if (window.AndroidBridge && typeof window.AndroidBridge.getDownloadProgress === 'function') {
@@ -6076,7 +6076,9 @@ https://u2l.ai/MessManager
                 } catch (e) { p = 100; }
                 if (progressCb) progressCb(p);
                 if (p >= 100) clearInterval(this._updateProgressTimer);
-            }, 1000);
+            };
+            this._updateProgressTimer = setInterval(poll, 500);
+            poll();
         } else {
             try { location.href = info.downloadUrl; } catch (e) {}
             if (progressCb) progressCb(100);
