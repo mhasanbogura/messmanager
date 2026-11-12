@@ -108,12 +108,103 @@ task syncWebAssets(type: Copy) {
     into "${project.projectDir}/src/main/assets/public"
 }
 
+// Local preview server: serves www/ at http://localhost:1003 (override with
+// -PpreviewPort=xxxx) so web changes can be viewed in a browser while building.
+// Files are read from disk on every request - just refresh to see edits.
+// Starts automatically with assembleDebug, keeps running in the Gradle daemon
+// across builds (idempotent), and stops with the daemon (gradlew --stop).
+task previewServer {
+    group = 'preview'
+    description = 'Serves www/ at http://localhost:1003 (live preview of web changes)'
+    doLast {
+        def docRoot = new File(project.projectDir.parentFile.parentFile, 'www').canonicalFile
+        if (!docRoot.isDirectory()) {
+            throw new GradleException("www/ folder not found: ${docRoot}")
+        }
+        def port = ((project.findProperty('previewPort') ?: '1003') as String) as int
+        if (System.getProperty('mess.preview.running') == '1') {
+            println "Preview server already running: http://localhost:${port}/"
+            return
+        }
+        // Cross-daemon check: if OUR server already answers on this port, skip.
+        try {
+            def conn = java.net.URI.create("http://127.0.0.1:${port}/").toURL().openConnection()
+            conn.connectTimeout = 400
+            conn.readTimeout = 400
+            def ours = conn.getHeaderField('X-Preview-Server') == 'messmanager'
+            conn.disconnect()
+            if (ours) {
+                println "Preview server already running: http://localhost:${port}/"
+                return
+            }
+        } catch (Exception ignored) { }
+        def mime = [
+            'html': 'text/html; charset=utf-8', 'css': 'text/css; charset=utf-8',
+            'js': 'application/javascript; charset=utf-8', 'mjs': 'application/javascript; charset=utf-8',
+            'json': 'application/json; charset=utf-8', 'png': 'image/png', 'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg', 'gif': 'image/gif', 'svg': 'image/svg+xml', 'webp': 'image/webp',
+            'ico': 'image/x-icon', 'woff2': 'font/woff2', 'woff': 'font/woff', 'ttf': 'font/ttf',
+            'otf': 'font/otf', 'md': 'text/markdown; charset=utf-8', 'txt': 'text/plain; charset=utf-8',
+            'wasm': 'application/wasm', 'xml': 'application/xml',
+            'webmanifest': 'application/manifest+json'
+        ]
+        def server
+        try {
+            server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(port), 0)
+        } catch (java.net.BindException e) {
+            println "WARNING: preview server not started - port ${port} is already in use"
+            return
+        }
+        server.createContext('/') { exchange ->
+            def method = exchange.requestMethod
+            try {
+                if (method != 'GET' && method != 'HEAD') {
+                    exchange.sendResponseHeaders(405, -1)
+                    exchange.close()
+                    return
+                }
+                def rel = java.net.URLDecoder.decode(exchange.requestURI.path, 'UTF-8')
+                if (rel == '/' || rel.endsWith('/')) rel += 'index.html'
+                def target = new File(docRoot, rel).canonicalFile
+                def inside = target.path == docRoot.path ||
+                        target.path.startsWith(docRoot.path + File.separator)
+                if (!inside || !target.isFile()) {
+                    def msg = '404 Not Found'.bytes
+                    exchange.responseHeaders.set('Content-Type', 'text/plain; charset=utf-8')
+                    exchange.sendResponseHeaders(404, msg.length)
+                    if (method == 'GET') exchange.responseBody.write(msg)
+                    exchange.close()
+                    return
+                }
+                def name = target.name
+                def ext = name.contains('.') ? name.substring(name.lastIndexOf('.') + 1).toLowerCase() : ''
+                def body = target.bytes
+                exchange.responseHeaders.set('Content-Type', mime[ext] ?: 'application/octet-stream')
+                exchange.responseHeaders.set('Cache-Control', 'no-store')
+                exchange.responseHeaders.set('X-Preview-Server', 'messmanager')
+                exchange.sendResponseHeaders(200, method == 'HEAD' ? -1 : body.length)
+                if (method == 'GET') exchange.responseBody.write(body)
+                exchange.close()
+            } catch (Exception e) {
+                try { exchange.sendResponseHeaders(500, -1) } catch (ignored) { }
+                try { exchange.close() } catch (ignored2) { }
+            }
+        }
+        server.executor = java.util.concurrent.Executors.newFixedThreadPool(4)
+        server.start()
+        System.setProperty('mess.preview.running', '1')
+        println "Preview server: http://localhost:${port}/  (serving ${docRoot})"
+    }
+}
+
 project.afterEvaluate {
     tasks.findByName('assembleDebug')?.dependsOn('stampVersion')
     tasks.findByName('mergeDebugAssets')?.dependsOn('stampVersion', 'syncWebAssets')
     tasks.findByName('mergeReleaseAssets')?.dependsOn('syncWebAssets')
     tasks.findByName('syncWebAssets')?.dependsOn('stampVersion')
     tasks.findByName('preBuild')?.dependsOn('syncKeystore')
+    // Local preview server (http://localhost:1003) is up before every build.
+    tasks.findByName('assembleDebug')?.dependsOn('previewServer')
     // Every build is published automatically: Drive + git push + GitHub Release.
     tasks.findByName('assembleDebug')?.finalizedBy('release')
 }
