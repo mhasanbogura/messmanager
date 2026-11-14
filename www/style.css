@@ -2504,8 +2504,8 @@ select.input-sm { cursor: pointer; }
 }
 .lang-toggle[data-lang="bn"] .lt-text { right: 6px; }
 .lang-toggle[data-lang="en"] .lt-text { left: 6px; }
-[data-theme="dark"] .lang-toggle, [data-theme="oled"] .lang-toggle { background: #222; }
-[data-theme="dark"] .lang-toggle .lt-text, [data-theme="oled"] .lang-toggle .lt-text { color: #aaa; }
+[data-theme="dark"] .lang-toggle, [data-theme="oled"] .lang-toggle { background: #ccc; }
+[data-theme="dark"] .lang-toggle .lt-text, [data-theme="oled"] .lang-toggle .lt-text { color: #444; }
 .aprof-version { text-align: center; margin-top: 24px; padding: 16px 0; border-top: 1px solid #eef1f6; }
 .aprof-version span { font-size: 11px; color: #999; font-family: 'Inter', sans-serif; letter-spacing: 0.5px; }
 [data-theme="dark"] .topbar { background: var(--card) !important; border-color: var(--border); }
@@ -2516,7 +2516,9 @@ select.input-sm { cursor: pointer; }
 [data-theme="dark"] .aprof-row { border-color: #1a1a1a; }
 [data-theme="dark"] .aprof-row .material-icons-round:first-child { color: #9aa4b5; }
 [data-theme="dark"] .aprof-row .material-icons-round:last-child { color: #4b5563; }
-[data-theme="dark"] .toggle-slider { background: #1a1a1a; }
+[data-theme="dark"] .toggle-slider { background: #ccc; }
+[data-theme="dark"] .toggle input:checked + .toggle-slider,
+[data-theme="oled"] .toggle input:checked + .toggle-slider { background: #3b7bdd; }
 [data-theme="dark"] .aprof-version { border-color: #1a1a1a; }
 [data-theme="dark"] .aprof-version span { color: #6b7280; }
 [data-theme="oled"] .aprof-card { background: #000000; border-color: #1a1a1a; }
@@ -2526,7 +2528,7 @@ select.input-sm { cursor: pointer; }
 [data-theme="oled"] .aprof-row { border-color: #1a1a1a; }
 [data-theme="oled"] .aprof-row .material-icons-round:first-child { color: #9aa4b5; }
 [data-theme="oled"] .aprof-row .material-icons-round:last-child { color: #4b5563; }
-[data-theme="oled"] .toggle-slider { background: #1a1a1a; }
+[data-theme="oled"] .toggle-slider { background: #ccc; }
 [data-theme="oled"] .aprof-version { border-color: #1a1a1a; }
 [data-theme="oled"] .aprof-version span { color: #4b5563; }
 
@@ -3289,7 +3291,7 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .aprof-row { border-color: #1a1a1a; }
 [data-theme="oled"] .aprof-row .material-icons-round:first-child { color: #999; }
 [data-theme="oled"] .aprof-row .material-icons-round:last-child { color: #555; }
-[data-theme="oled"] .toggle-slider { background: #333; }
+[data-theme="oled"] .toggle-slider { background: #ccc; }
 [data-theme="oled"] .aprof-desc-inline { color: #777; }
 /* Collapse */
 [data-theme="oled"] .collapse-header { background: #0d0d0d; border-color: #1a1a1a; color: #e8ebf1; }
