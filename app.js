@@ -5098,7 +5098,9 @@ https://u2l.ai/MessManager
         const shareRow = document.getElementById('row-share-app');
         const updateRow = document.getElementById('row-update-app');
 
-        if (shareRow) shareRow.style.display = native ? 'flex' : 'none';
+        // Share App is available on both: native uses the Share plugin,
+        // web falls back to navigator.share or clipboard copy.
+        if (shareRow) shareRow.style.display = 'flex';
         if (updateRow) {
             updateRow.style.display = 'flex';
             // The app updates itself in place; a browser has no in-app update,
