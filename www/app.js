@@ -1,6 +1,6 @@
 const App = {
     currentUser: null, messId: null, messCode: null, messName: null,
-    currentPage: 'dashboard', userRole: 'member',
+    currentPage: 'dashboard', userRole: 'member', _keyMode: 'email',
     _skipCache: new Set(),
     _cacheVersion: 0,
 
@@ -472,10 +472,11 @@ const App = {
         });
         this.bindEvents();
         this.bindBackButton();
-        auth.onAuthStateChanged(user => {
+        auth.onAuthStateChanged(async user => {
             if (user) {
                 this.currentUser = user;
                 if (this.messId && document.getElementById('app-screen')?.classList.contains('active')) { this._hideSplash(); return; }
+                try { await this._migrateAccountToEmail(); } catch (e) {}
                 this.loadMyMesses();
                 const params = new URLSearchParams(window.location.search);
                 const joinCode = params.get('join');
@@ -568,9 +569,17 @@ const App = {
         document.getElementById(id).classList.add('active');
         const nav = document.getElementById('bottom-nav');
         if (nav) nav.classList.toggle('hidden-nav', id !== 'app-screen');
+        if (id === 'mess-select-screen') this._showMessAccount();
         const resolved = (this.theme === 'system') ? (this._isSystemDark() ? 'oled' : 'light') : this.theme;
         const isOled = resolved === 'oled';
         this._setSystemBars(isOled ? '#0a0a0a' : '#f2f4f8', isOled ? '#ffffff' : '#14181f');
+    },
+
+    _showMessAccount() {
+        const el = document.getElementById('mess-select-account');
+        if (!el) return;
+        const email = (this.currentUser && this.currentUser.email) || '';
+        el.textContent = email ? `Signed in as ${email}` : '';
     },
 
     bindBackButton() {
@@ -729,7 +738,7 @@ const App = {
         try {
             const c = await auth.createUserWithEmailAndPassword(email, pass);
             await c.user.updateProfile({ displayName: name });
-            await db.ref(`users/${c.user.uid}`).set({ name, email, phone, createdAt: Date.now() });
+            try { await db.ref(`users/${this._keyFor(c.user)}`).set({ name, email, phone, createdAt: Date.now() }); } catch (e) { /* created on next sign-in */ }
         }
         catch (e) { let m = e.message; if (e.code === 'auth/email-already-in-use') m = 'Already registered'; this.toast(m, 'error'); }
         finally { btn.textContent = 'Create Account'; btn.disabled = false; }
@@ -748,13 +757,13 @@ const App = {
                 if (!idToken) { this.toast('Google login failed: no ID token received', 'error'); return; }
                 const credential = firebase.auth.GoogleAuthProvider.credential(idToken);
                 const c = await auth.signInWithCredential(credential);
-                const s = await db.ref(`users/${c.user.uid}`).once('value');
-                if (!s.exists()) await db.ref(`users/${c.user.uid}`).set({ name: c.user.displayName, email: c.user.email, createdAt: Date.now() });
+                const s = await db.ref(`users/${this._keyFor(c.user)}`).once('value');
+                if (!s.exists()) { try { await db.ref(`users/${this._keyFor(c.user)}`).set({ name: c.user.displayName, email: c.user.email, createdAt: Date.now() }); } catch (e) { /* created on next sign-in */ } }
             } else {
                 const p = new firebase.auth.GoogleAuthProvider();
                 const c = await auth.signInWithPopup(p);
-                const s = await db.ref(`users/${c.user.uid}`).once('value');
-                if (!s.exists()) await db.ref(`users/${c.user.uid}`).set({ name: c.user.displayName, email: c.user.email, createdAt: Date.now() });
+                const s = await db.ref(`users/${this._keyFor(c.user)}`).once('value');
+                if (!s.exists()) { try { await db.ref(`users/${this._keyFor(c.user)}`).set({ name: c.user.displayName, email: c.user.email, createdAt: Date.now() }); } catch (e) { /* created on next sign-in */ } }
             }
         }
         catch (e) {
@@ -779,8 +788,8 @@ const App = {
         try {
             const result = await auth.getRedirectResult();
             if (result && result.user) {
-                const s = await db.ref(`users/${result.user.uid}`).once('value');
-                if (!s.exists()) await db.ref(`users/${result.user.uid}`).set({ name: result.user.displayName, email: result.user.email, createdAt: Date.now() });
+                const s = await db.ref(`users/${this._keyFor(result.user)}`).once('value');
+                if (!s.exists()) await db.ref(`users/${this._keyFor(result.user)}`).set({ name: result.user.displayName, email: result.user.email, createdAt: Date.now() });
             }
         } catch (e) { /* ignore */ }
     },
@@ -796,6 +805,135 @@ const App = {
         return typeof mid === 'string' && mid.length > 0 && mid !== 'undefined' && mid !== 'null';
     },
 
+    // Members and account records are keyed by e-mail, not by Firebase UID, so a
+    // person keeps one record even when the sign-in method (and therefore the
+    // uid) changes. Dots are escaped because Realtime Database keys cannot hold
+    // them; database.rules.json escapes auth.token.email the same way.
+    _emailKey(email) {
+        const e = String(email || '').trim().toLowerCase();
+        return e ? e.replace(/\./g, '%2E') : '';
+    },
+
+    _keyFor(user) {
+        return this._emailKey(user && user.email) || (user ? user.uid : '');
+    },
+
+    // Key that identifies the signed-in account everywhere in the database.
+    // Falls back to the uid for accounts without an e-mail, or while the old
+    // uid-based rules are still deployed.
+    myKey() {
+        if (!this.currentUser) return '';
+        if (this._keyMode === 'uid') return this.currentUser.uid;
+        return this._keyFor(this.currentUser);
+    },
+
+    // Move this account's own record (and its mess list) from the uid key to the
+    // e-mail key. If the database still runs the old rules the write is refused
+    // and the app keeps using uid keys, so it never breaks mid-migration.
+    async _migrateAccountToEmail() {
+        if (!this.currentUser) return;
+        const uid = this.currentUser.uid;
+        const key = this._keyFor(this.currentUser);
+        if (!key || key === uid) return;
+        try {
+            const [oldSnap, curSnap] = await Promise.all([
+                db.ref(`users/${uid}`).once('value'),
+                db.ref(`users/${key}`).once('value')
+            ]);
+            const old = oldSnap.val() || null;
+            const cur = curSnap.val() || null;
+            if (!old && cur) return;
+            const merged = Object.assign({}, old || {}, cur || {});
+            merged.name = merged.name || this.currentUser.displayName || '';
+            merged.email = this.currentUser.email || merged.email || '';
+            if (!merged.createdAt) merged.createdAt = Date.now();
+            const oldMesses = (old && old.messes) || {};
+            const curMesses = (cur && cur.messes) || {};
+            if (Object.keys(oldMesses).length || Object.keys(curMesses).length) {
+                merged.messes = Object.assign({}, oldMesses, curMesses);
+            }
+            if (!merged.currentMess && old && old.currentMess) merged.currentMess = old.currentMess;
+            await db.ref(`users/${key}`).set(merged);
+            if (old) { try { await db.ref(`users/${uid}`).remove(); } catch (e) { /* keep legacy copy */ } }
+        } catch (e) {
+            // Only the old rules should switch us back: a network hiccup must not.
+            const code = String((e && e.code) || '');
+            if (code.indexOf('PERMISSION_DENIED') !== -1 || code.indexOf('permission-denied') !== -1) {
+                this._keyMode = 'uid';
+            }
+        }
+    },
+
+    // This account's member row for a mess. Rows written by older versions are
+    // keyed by uid; adopt such a row under the e-mail key when it is found.
+    async _selfMemberRow(mid) {
+        if (!this.currentUser) return null;
+        const key = this.myKey();
+        const uid = this.currentUser.uid;
+        try {
+            const snap = await db.ref(`messes/${mid}/members/${key}`).once('value');
+            if (snap.exists()) return { key, row: snap.val() || {} };
+        } catch (e) { /* fall through to the legacy row */ }
+        if (!key || key === uid) return null;
+        try {
+            const legacy = await db.ref(`messes/${mid}/members/${uid}`).once('value');
+            if (!legacy.exists()) return null;
+            const row = legacy.val() || {};
+            try {
+                await db.ref(`messes/${mid}/members/${key}`).set({
+                    name: row.name || this.currentUser.displayName || 'Member',
+                    email: this.currentUser.email || row.email || '',
+                    role: row.role || 'member',
+                    status: row.status || 'active',
+                    joinedAt: row.joinedAt || Date.now()
+                });
+            } catch (e) {
+                return { key: uid, row };
+            }
+            return { key, row };
+        } catch (e) { return null; }
+    },
+
+    // One-time conversion of a mess's member rows and their permissions from uid
+    // keys to e-mail keys. Duplicate rows for one e-mail are merged (manager wins,
+    // active wins); name-only members (member_…) are left alone.
+    async _migrateMessToEmailKeys(mid) {
+        if (!mid || !this.currentUser) return;
+        this._migratedMesses = this._migratedMesses || {};
+        if (this._migratedMesses[mid]) return;
+        this._migratedMesses[mid] = true;
+        try {
+            const [mSnap, pSnap] = await Promise.all([
+                db.ref(`messes/${mid}/members`).once('value'),
+                db.ref(`messes/${mid}/permissions`).once('value')
+            ]);
+            const members = mSnap.val() || {};
+            const perms = pSnap.val() || {};
+            const updates = {};
+            for (const [key, m] of Object.entries(members)) {
+                if (!m || !m.email) continue;
+                const target = this._emailKey(m.email);
+                if (!target || target === key) continue;
+                const existing = members[target] || {};
+                const merged = Object.assign({}, existing, m);
+                merged.role = (existing.role === 'admin' || m.role === 'admin') ? 'admin' : (m.role || existing.role || 'member');
+                merged.status = (existing.status === 'active' || m.status === 'active' || !m.status) ? 'active' : (m.status || existing.status);
+                merged.email = this.currentUser.email && this._emailKey(this.currentUser.email) === target ? this.currentUser.email : (m.email || existing.email);
+                merged.joinedAt = Math.min(existing.joinedAt || Infinity, m.joinedAt || Infinity);
+                if (!isFinite(merged.joinedAt)) merged.joinedAt = Date.now();
+                if (!merged.name) merged.name = m.name || existing.name || 'Member';
+                updates[`messes/${mid}/members/${target}`] = merged;
+                updates[`messes/${mid}/members/${key}`] = null;
+                const pNew = perms[target] || {};
+                const pOld = perms[key] || {};
+                if (Object.keys(pOld).length) updates[`messes/${mid}/permissions/${target}`] = Object.assign({}, pOld, pNew);
+                if (perms[key]) updates[`messes/${mid}/permissions/${key}`] = null;
+            }
+            if (!Object.keys(updates).length) return;
+            await db.ref().update(updates);
+        } catch (e) { this._migratedMesses[mid] = false; }
+    },
+
     async loadMyMesses() {
         if (!this.currentUser) return;
         const cacheKey = `user_messes_${this.currentUser.uid}`;
@@ -808,14 +946,14 @@ const App = {
                 // Cache-first: enter instantly, then refresh membership in the
                 // background and re-run only if the mess list actually changed.
                 const sig = o => JSON.stringify(Object.keys(o).sort().map(k => [k, (o[k] || {}).role]));
-                db.ref(`users/${this.currentUser.uid}/messes`).once('value').then(snap => {
+                db.ref(`users/${this.myKey()}/messes`).once('value').then(snap => {
                     const fresh = snap.val() || {};
                     try { localStorage.setItem(cacheKey, JSON.stringify(fresh)); } catch (e) {}
                     if (sig(fresh) !== sig(data)) this.loadMyMesses();
                 }).catch(() => {});
             } else {
                 try {
-                    const snap = await db.ref(`users/${this.currentUser.uid}/messes`).once('value');
+                    const snap = await db.ref(`users/${this.myKey()}/messes`).once('value');
                     data = snap.val() || {};
                     try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
                 } catch (e) {}
@@ -828,8 +966,9 @@ const App = {
             const stale = [];
             for (const mid of Object.keys(data)) {
                 try {
-                    const ms = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
-                    if (!ms.exists()) stale.push(mid);
+                    // Resolves the row by e-mail key, adopting a legacy uid row.
+                    const self = await this._selfMemberRow(mid);
+                    if (!self) stale.push(mid);
                 } catch (e) {
                     if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
                 }
@@ -837,8 +976,8 @@ const App = {
             if (stale.length) {
                 stale.forEach(mid => { delete data[mid]; this._userMessesCacheUpdate(mid, null); });
                 const patch = {};
-                stale.forEach(mid => { patch[`users/${this.currentUser.uid}/messes/${mid}`] = null; });
-                patch[`users/${this.currentUser.uid}/currentMess`] = Object.keys(data)[0] || null;
+                stale.forEach(mid => { patch[`users/${this.myKey()}/messes/${mid}`] = null; });
+                patch[`users/${this.myKey()}/currentMess`] = Object.keys(data)[0] || null;
                 db.ref().update(patch).catch(() => {});
                 try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
             }
@@ -851,7 +990,7 @@ const App = {
             try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
             if (!offline) {
                 const patch = {};
-                badIds.forEach(k => { patch[`users/${this.currentUser.uid}/messes/${k}`] = null; });
+                badIds.forEach(k => { patch[`users/${this.myKey()}/messes/${k}`] = null; });
                 db.ref().update(patch).catch(() => {});
             }
         }
@@ -867,12 +1006,19 @@ const App = {
             ids.forEach(k => {
                 if (k === keep) return;
                 delete data[k];
-                drop[`users/${this.currentUser.uid}/messes/${k}`] = null;
+                drop[`users/${this.myKey()}/messes/${k}`] = null;
             });
             try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
-            if (!offline) { db.ref().update(drop).catch(() => {}); db.ref(`users/${this.currentUser.uid}/currentMess`).set(keep).catch(() => {}); }
+            if (!offline) { db.ref().update(drop).catch(() => {}); db.ref(`users/${this.myKey()}/currentMess`).set(keep).catch(() => {}); }
         }
         const finalIds = Object.keys(data);
+        // The account may be a re-created sign-in (new uid) or an approval may
+        // never have written this user's index, so the mess exists but this
+        // account is not linked to it. Relink by the signed-in email.
+        if (!finalIds.length && !offline) {
+            const recoveredMid = await this._recoverMembershipByEmail();
+            if (recoveredMid) { this.enterMess(recoveredMid); return; }
+        }
         if (finalIds.length === 1) {
             const onlyMid = finalIds[0];
             let messOk = true;
@@ -920,6 +1066,41 @@ const App = {
         this._setupMessSelectPullRefresh();
     },
 
+    // A person can end up with an empty mess list even though the mess still
+    // lists them: Firebase gives a new uid when the account is re-created, and an
+    // admin approval cannot always write another user's index. The member row
+    // still carries their email, so relink the signed-in account to that mess
+    // instead of showing "No mess yet".
+    async _recoverMembershipByEmail() {
+        if (!this.currentUser || !navigator.onLine) return null;
+        const uid = this.myKey();
+        if (!uid) return null;
+        let codes = {};
+        try { codes = (await db.ref('messCodes').once('value')).val() || {}; } catch (e) { return null; }
+        const ids = [...new Set(Object.values(codes))]
+            .filter(mid => typeof mid === 'string' && this._validMid(mid))
+            .slice(0, 25);
+        const matches = [];
+        await Promise.all(ids.map(async mid => {
+            const self = await this._selfMemberRow(mid);
+            if (self && self.row && self.row.status !== 'pending') matches.push({ mid, row: self.row });
+        }));
+        if (!matches.length) return null;
+        matches.sort((a, b) =>
+            (b.row.role === 'admin') - (a.row.role === 'admin') ||
+            ((b.row.joinedAt || 0) - (a.row.joinedAt || 0))
+        );
+        const pick = matches[0];
+        if (this._lastRecoveredMid === pick.mid) return null;
+        this._lastRecoveredMid = pick.mid;
+        try {
+            await db.ref(`users/${uid}/messes/${pick.mid}`).set({ role: pick.row.role || 'member', joinedAt: pick.row.joinedAt || Date.now() });
+            await db.ref(`users/${uid}/currentMess`).set(pick.mid);
+        } catch (e) { return null; }
+        try { this._userMessesCacheUpdate(pick.mid, pick.row.role || 'member'); } catch (e) {}
+        return pick.mid;
+    },
+
     _userMessesCacheUpdate(mid, role) {
         if (!this.currentUser || !this._validMid(mid)) return;
         try {
@@ -935,7 +1116,7 @@ const App = {
     // a member record for them. Phantom/leftover index entries are purged.
     async _hasValidMembership() {
         if (!this.currentUser) return false;
-        const uid = this.currentUser.uid;
+        const uid = this.myKey();
         let data = {};
         try { data = (await db.ref(`users/${uid}/messes`).once('value')).val() || {}; } catch (e) { return false; }
         const ids = Object.keys(data).filter(k => this._validMid(k));
@@ -943,8 +1124,8 @@ const App = {
         const stale = [];
         for (const mid of ids) {
             try {
-                const s = await db.ref(`messes/${mid}/members/${uid}`).once('value');
-                if (!s.exists()) stale.push(mid);
+                const self = await this._selfMemberRow(mid);
+                if (!self) stale.push(mid);
             } catch (e) {
                 if (e && e.code === 'PERMISSION_DENIED') stale.push(mid);
             }
@@ -970,16 +1151,12 @@ const App = {
 
     async _leaveFromSelect(mid) {
         if (!this.currentUser) return;
-        const uid = this.currentUser.uid;
-        let isMember = false;
-        try {
-            const m = await db.ref(`messes/${mid}/members/${uid}`).once('value');
-            isMember = m.exists();
-        } catch (e) { isMember = false; }
+        const uid = this.myKey();
+        const selfRow = await this._selfMemberRow(mid);
+        const isMember = !!selfRow;
         if (isMember) {
             // Reuse the normal leave flow (manager step-down, last-member delete).
-            let role = 'member';
-            try { role = (await db.ref(`messes/${mid}/members/${uid}/role`).once('value')).val() || 'member'; } catch (e) {}
+            const role = (selfRow.row && selfRow.row.role) || 'member';
             this.messId = mid;
             this.userRole = role;
             try {
@@ -1122,27 +1299,26 @@ const App = {
         const settingsCacheKey = `mess_settings_${mid}`;
         const roleCacheKey = `mess_role_${mid}`;
         const offline = !navigator.onLine;
+        let roleFromRow = null;
         try {
             if (!offline) {
                 if (!opts || !opts.skipMemberCheck) {
-                    let memberSnap = null;
-                    let denied = false;
-                    try {
-                        memberSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
-                    } catch (e2) {
-                        denied = e2 && e2.code === 'PERMISSION_DENIED';
-                    }
-                    if (denied || (memberSnap && !memberSnap.exists())) {
-                        try { await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).remove(); } catch (e2) {}
-                        try { await db.ref(`users/${this.currentUser.uid}/currentMess`).remove(); } catch (e2) {}
+                    const self = await this._selfMemberRow(mid);
+                    if (!self) {
+                        try { await db.ref(`users/${this.myKey()}/messes/${mid}`).remove(); } catch (e2) {}
+                        try { await db.ref(`users/${this.myKey()}/currentMess`).remove(); } catch (e2) {}
                         this._userMessesCacheUpdate(mid, null);
                         this.toast('You are no longer a member of this mess', 'error');
                         this.messId = null;
                         return this.loadMyMesses();
                     }
+                    roleFromRow = self.row.role || 'member';
+                    if (roleFromRow === 'admin') {
+                        try { await this._migrateMessToEmailKeys(mid); } catch (e2) {}
+                    }
                 }
                 // Remember the single active mess for this user.
-                db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid).catch(() => {});
+                db.ref(`users/${this.myKey()}/currentMess`).set(mid).catch(() => {});
                 let cachedSettings = null;
                 try { cachedSettings = JSON.parse(localStorage.getItem(settingsCacheKey) || 'null'); } catch (e2) {}
                 if (cachedSettings) {
@@ -1158,7 +1334,7 @@ const App = {
                         try { localStorage.setItem(settingsCacheKey, JSON.stringify(v)); } catch (e2) {}
                         this._ensureMessCodeIndex(mid, v.messCode);
                     }).catch(() => {});
-                    db.ref(`messes/${mid}/members/${this.currentUser.uid}/role`).once('value').then(rn => {
+                    db.ref(`messes/${mid}/members/${this.myKey()}/role`).once('value').then(rn => {
                         if (this.messId !== mid) return;
                         this.userRole = rn.val() || 'member';
                         try { localStorage.setItem(roleCacheKey, this.userRole); } catch (e2) {}
@@ -1172,7 +1348,7 @@ const App = {
                     try { localStorage.setItem(settingsCacheKey, JSON.stringify(v)); } catch (e) {}
                     this._ensureMessCodeIndex(mid, v.messCode);
                     try {
-                        const roleSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}/role`).once('value');
+                        const roleSnap = await db.ref(`messes/${mid}/members/${this.myKey()}/role`).once('value');
                         this.userRole = roleSnap.val() || 'member';
                         try { localStorage.setItem(roleCacheKey, this.userRole); } catch (e) {}
                     } catch (e) {
@@ -1195,6 +1371,8 @@ const App = {
                 this.userRole = localStorage.getItem(roleCacheKey) || 'member';
             } catch (e2) {}
         }
+        // The member row is the source of truth, not the cached role.
+        if (roleFromRow) this.userRole = roleFromRow;
         try { this.setupPresence(); } catch (e) {}
         try { await this.loadMyPerms(); } catch (e) {}
         this.showApp();
@@ -1229,7 +1407,7 @@ const App = {
                 this._cacheSet('meals_today_' + todayKey, todaySnap.val() || {});
             } catch (e) {}
             try {
-                const picSnap = await db.ref(`users/${this.currentUser.uid}/profilePicture`).once('value');
+                const picSnap = await db.ref(`users/${this.myKey()}/profilePicture`).once('value');
                 const pic = picSnap.val();
                 if (pic) this._cacheSetGlobal('profilePic', pic);
             } catch (e) {}
@@ -1238,7 +1416,7 @@ const App = {
 
     setupPresence() {
         if (!this.messId || !this.currentUser) return;
-        const uid = this.currentUser.uid;
+        const uid = this.myKey();
         const presRef = db.ref(`messes/${this.messId}/online/${uid}`);
         presRef.set(true);
         presRef.onDisconnect().remove();
@@ -1263,7 +1441,7 @@ const App = {
     async _doLeaveMess(stepDown) {
         if (!this.messId || !this.currentUser) return;
         try {
-            const uid = this.currentUser.uid;
+            const uid = this.myKey();
             const mid = this.messId;
             const mSnap = await db.ref(`messes/${mid}/members`).once('value');
             const others = Object.keys(mSnap.val() || {}).filter(id => id !== uid && !id.startsWith('member_'));
@@ -1293,6 +1471,13 @@ const App = {
             updates[`messes/${mid}/permissions/${uid}`] = null;
             updates[`users/${uid}/messes/${mid}`] = null;
             updates[`users/${uid}/currentMess`] = null;
+            // Also clear the legacy uid-keyed records if this account migrated.
+            if (this.currentUser && this.currentUser.uid !== uid) {
+                updates[`messes/${mid}/members/${this.currentUser.uid}`] = null;
+                updates[`messes/${mid}/permissions/${this.currentUser.uid}`] = null;
+                updates[`users/${this.currentUser.uid}/messes/${mid}`] = null;
+                updates[`users/${this.currentUser.uid}/currentMess`] = null;
+            }
             await db.ref().update(updates);
             this._userMessesCacheUpdate(mid, null);
             if (stepDown) {
@@ -1328,11 +1513,11 @@ const App = {
             }
             const write = db.ref(`messes/${newKey}`).set({
                 settings: { messName: name, messCode: code, owner: this.currentUser.uid, createdAt: Date.now() },
-                members: { [this.currentUser.uid]: { name: this.currentUser.displayName || 'Admin', email: this.currentUser.email, role: 'admin', joinedAt: Date.now() } }
+                members: { [this.myKey()]: { name: this.currentUser.displayName || 'Admin', email: this.currentUser.email, role: 'admin', joinedAt: Date.now() } }
             });
             await Promise.race([write, timeout]);
-            await Promise.race([db.ref(`users/${this.currentUser.uid}/currentMess`).set(newKey), timeout]);
-            await Promise.race([db.ref(`users/${this.currentUser.uid}/messes/${newKey}`).set({ role: 'admin', joinedAt: Date.now() }), timeout]);
+            await Promise.race([db.ref(`users/${this.myKey()}/currentMess`).set(newKey), timeout]);
+            await Promise.race([db.ref(`users/${this.myKey()}/messes/${newKey}`).set({ role: 'admin', joinedAt: Date.now() }), timeout]);
             db.ref(`messCodes/${code}`).set(newKey).catch(() => {});
             this._userMessesCacheUpdate(newKey, 'admin');
             this.toast('Mess created!', 'success');
@@ -1368,15 +1553,15 @@ const App = {
             }
             if (!mid || !this._validMid(String(mid))) { this.toast('Mess not found', 'error'); btn.textContent = 'Join Mess'; btn.disabled = false; return; }
             mid = String(mid);
-            const existingSnap = await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).once('value');
+            const existingSnap = await db.ref(`messes/${mid}/members/${this.myKey()}`).once('value');
             if (existingSnap.exists()) {
                 const ed = existingSnap.val() || {};
                 if (ed.status === 'pending') {
                     // Direct join: activate any old pending request immediately.
-                    try { await db.ref(`messes/${mid}/members/${this.currentUser.uid}/status`).set('active'); } catch (e2) {}
+                    try { await db.ref(`messes/${mid}/members/${this.myKey()}/status`).set('active'); } catch (e2) {}
                 }
-                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
-                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: ed.role || 'member', joinedAt: ed.joinedAt || Date.now() });
+                await db.ref(`users/${this.myKey()}/currentMess`).set(mid);
+                await db.ref(`users/${this.myKey()}/messes/${mid}`).set({ role: ed.role || 'member', joinedAt: ed.joinedAt || Date.now() });
                 this._userMessesCacheUpdate(mid, ed.role || 'member');
                 this.toast('Joined!', 'success');
                 document.getElementById('join-mess-code').value = '';
@@ -1384,12 +1569,22 @@ const App = {
                 btn.textContent = 'Join Mess'; btn.disabled = false;
                 return;
             }
+            const joinUid = this.myKey();
+            let indexed = false;
             try {
-                await db.ref(`messes/${mid}/members/${this.currentUser.uid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'active', joinedAt: Date.now() });
-                await db.ref(`users/${this.currentUser.uid}/currentMess`).set(mid);
-                await db.ref(`users/${this.currentUser.uid}/messes/${mid}`).set({ role: 'member', joinedAt: Date.now() });
+                // Own index first: the rules only accept a member row for a uid whose
+                // users/<uid>/currentMess (or users/<uid>/messes) already names this
+                // mess, so the old order could be rejected with PERMISSION_DENIED.
+                await db.ref(`users/${joinUid}/currentMess`).set(mid);
+                await db.ref(`users/${joinUid}/messes/${mid}`).set({ role: 'member', joinedAt: Date.now() });
+                indexed = true;
+                await db.ref(`messes/${mid}/members/${joinUid}`).set({ name: this.currentUser.displayName || 'Member', email: this.currentUser.email, role: 'member', status: 'active', joinedAt: Date.now() });
             } catch (err) {
-                this.toast((err && err.code === 'PERMISSION_DENIED') ? 'Mess not found' : 'Error: ' + (err && err.message ? err.message : err), 'error');
+                if (indexed) {
+                    try { await db.ref(`users/${joinUid}/messes/${mid}`).remove(); } catch (e2) {}
+                    try { await db.ref(`users/${joinUid}/currentMess`).remove(); } catch (e2) {}
+                }
+                this.toast((err && err.code === 'PERMISSION_DENIED') ? 'The mess was found, but your membership could not be saved. Ask the manager to approve you.' : 'Error: ' + (err && err.message ? err.message : err), 'error');
                 return;
             }
             this._userMessesCacheUpdate(mid, 'member');
@@ -1830,7 +2025,7 @@ const App = {
         try {
             const mSnap = await db.ref(`messes/${messId}/members`).once('value');
             const members = mSnap.val() || {};
-            const myUid = this.currentUser.uid;
+            const myUid = this.myKey();
             const updates = {};
             updates[`messes/${messId}`] = null;
             if (this.messCode) updates[`messCodes/${this.messCode}`] = null;
@@ -1861,7 +2056,7 @@ const App = {
             if (!appUsers.length) { div.innerHTML = '<p class="empty-state" style="padding:20px;text-align:center;color:#999">No peoples have joined yet</p>'; return; }
             const colors = ['#E53935','#1565C0','#2E7D32','#FF9800','#7B1FA2','#00838F'];
             const hasManager = Object.values(members).some(x => x && x.role === 'admin');
-            const myUid = this.currentUser ? this.currentUser.uid : '';
+            const myUid = this.myKey();
             let managerRequests = {};
             try { const reqSnap = await db.ref(`messes/${this.messId}/managerRequests`).once('value'); managerRequests = reqSnap.val() || {}; } catch (e) {}
             let html = '';
@@ -1874,7 +2069,7 @@ const App = {
                 const isAdmin = m.role === 'admin';
                 const color = colors[i % colors.length];
                 const email = u.email || m.email || '';
-                const isYou = id === (this.currentUser ? this.currentUser.uid : '');
+                const isYou = id === this.myKey() || id === (this.currentUser ? this.currentUser.uid : '');
                 let profilePic = '';
                 try { const picSnap = await db.ref(`users/${id}/profilePicture`).once('value'); profilePic = picSnap.val() || ''; } catch (e) {}
                 const avatarStyle = profilePic ? `background-image:url(${profilePic});background-size:cover;background-position:center;color:transparent` : `background:${color}`;
@@ -1930,7 +2125,7 @@ const App = {
 
     async _doStepDownManager() {
         if (!this.messId || !this.currentUser) return;
-        const uid = this.currentUser.uid;
+        const uid = this.myKey();
         try {
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/role`] = 'member';
@@ -1946,7 +2141,7 @@ const App = {
     },
 
     becomeManager() {
-        this.promoteToManager(this.currentUser.uid, this.currentUser.displayName);
+        this.promoteToManager(this.myKey(), this.currentUser.displayName);
     },
 
     async promoteToManager(uid, name) {
@@ -1955,7 +2150,7 @@ const App = {
             const membersSnap = await db.ref(`messes/${this.messId}/members`).once('value');
             const members = membersSnap.val() || {};
             const hasManager = Object.values(members).some(m => m && m.role === 'admin');
-            const isSelf = uid === this.currentUser.uid;
+            const isSelf = uid === this.myKey();
             const becoming = isSelf && !hasManager;
             // Mess without a manager: any member may promote (matches the button
             // shown in loadFlatPeoples). With a manager present: manage perm only.
@@ -1990,7 +2185,7 @@ const App = {
 
     async requestStepDown(managerUid) {
         if (!this.messId || !this.currentUser) return;
-        const uid = this.currentUser.uid;
+        const uid = this.myKey();
         if (uid === managerUid) return;
         try {
             const snap = await db.ref(`messes/${this.messId}/managerRequests/${uid}`).once('value');
@@ -2017,7 +2212,7 @@ const App = {
                 try { this.loadDashboard(); } catch (e) {}
                 return;
             }
-            const uid = this.currentUser.uid;
+            const uid = this.myKey();
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/role`] = 'member';
             updates[`messes/${this.messId}/permissions/${uid}`] = null;
@@ -2040,7 +2235,7 @@ const App = {
             updates[`messes/${this.messId}/permissions/${uid}`] = null;
             updates[`users/${uid}/messes/${this.messId}`] = null;
             await db.ref().update(updates);
-            if (uid === this.currentUser.uid) this._userMessesCacheUpdate(this.messId, null);
+            if (uid === this.myKey()) this._userMessesCacheUpdate(this.messId, null);
             const mSnap = await db.ref(`messes/${this.messId}/members`).once('value');
             const remaining = Object.keys(mSnap.val() || {}).filter(id => !id.startsWith('member_'));
             if (!remaining.length) {
@@ -2073,7 +2268,7 @@ const App = {
             const colors = ['#E53935','#1565C0','#2E7D32','#FF9800','#7B1FA2','#00838F'];
             const iAmAdmin = this.userRole === 'admin';
             const iCanToggle = iAmAdmin || this.canDo('togglePerms');
-            const uid = this.currentUser ? this.currentUser.uid : '';
+            const uid = this.myKey();
             let html = '';
             for (let i = 0; i < mids.length; i++) {
                 const id = mids[i];
@@ -2112,7 +2307,7 @@ const App = {
     async togglePerm(uid, key, el) {
         if (!this.messId) return;
         if (!this.checkPerm('togglePerms')) return;
-        if (uid === this.currentUser.uid) { this.toast("Can't change own permissions", 'error'); return; }
+        if (uid === this.myKey() || uid === this.currentUser.uid) { this.toast("Can't change own permissions", 'error'); return; }
         try {
             const isChecked = el.classList.toggle('checked');
             const updates = {};
@@ -2134,14 +2329,14 @@ const App = {
             // Cache-first: permissions render instantly, verified in background.
             try { this._userPerms = JSON.parse(cachedRaw); } catch (e) { this._userPerms = {}; }
             this._permsLoaded = true;
-            db.ref(`messes/${this.messId}/members/${this.currentUser.uid}`).once('value').then(ms => {
+            db.ref(`messes/${this.messId}/members/${this.myKey()}`).once('value').then(ms => {
                 const m = ms.val() || {};
                 if (m.role === 'admin') {
                     this._userPerms = null;
                     try { localStorage.setItem(cacheKey, 'null'); } catch (e) {}
                     return;
                 }
-                db.ref(`messes/${this.messId}/permissions/${this.currentUser.uid}`).once('value').then(ps => {
+                db.ref(`messes/${this.messId}/permissions/${this.myKey()}`).once('value').then(ps => {
                     this._userPerms = ps.val() || {};
                     try { localStorage.setItem(cacheKey, JSON.stringify(this._userPerms)); } catch (e) {}
                 }).catch(() => {});
@@ -2150,10 +2345,10 @@ const App = {
         }
         try {
             if (!offline) {
-                const membersSnap = await db.ref(`messes/${this.messId}/members/${this.currentUser.uid}`).once('value');
+                const membersSnap = await db.ref(`messes/${this.messId}/members/${this.myKey()}`).once('value');
                 const m = membersSnap.val() || {};
                 if (m.role === 'admin') { this._userPerms = null; this._permsLoaded = true; try { localStorage.setItem(cacheKey, JSON.stringify(null)); } catch (e) {} return; }
-                const permSnap = await db.ref(`messes/${this.messId}/permissions/${this.currentUser.uid}`).once('value');
+                const permSnap = await db.ref(`messes/${this.messId}/permissions/${this.myKey()}`).once('value');
                 this._userPerms = permSnap.val() || {};
                 try { localStorage.setItem(cacheKey, JSON.stringify(this._userPerms)); } catch (e) {}
             } else {
@@ -2283,7 +2478,7 @@ https://u2l.ai/MessManager
                 const pic = this._cacheGetGlobal('profilePic');
                 if (pic) applyPic(pic);
                 else if (navigator.onLine) {
-                    db.ref(`users/${this.currentUser.uid}/profilePicture`).once('value').then(s => {
+                    db.ref(`users/${this.myKey()}/profilePicture`).once('value').then(s => {
                         const p = s.val();
                         if (p) { this._cacheSetGlobal('profilePic', p); applyPic(p); }
                     }).catch(() => {});
@@ -5879,10 +6074,10 @@ https://u2l.ai/MessManager
                 const reader = new FileReader();
                 reader.onload = async (ev) => {
                     const dataUrl = ev.target.result;
-                    const uid = this.currentUser.uid;
+                    const uid = this.myKey();
                     const messId = this.messId || 'default';
-                    await db.ref(`users/${uid}/profilePicture`).set(dataUrl);
-                    await db.ref(`messes/${messId}/members/${this.currentUser.displayName}/photo`).set(dataUrl);
+                    await db.ref(`users/${this.myKey()}/profilePicture`).set(dataUrl);
+                    await db.ref(`messes/${messId}/members/${this.myKey()}/photo`).set(dataUrl);
                     this.setProfilePic(dataUrl);
                     this.toast('Profile picture updated!', 'success');
                 };
@@ -5926,7 +6121,7 @@ https://u2l.ai/MessManager
                     const p = new firebase.auth.GoogleAuthProvider();
                     await this.currentUser.reauthenticateWithPopup(p);
                 }
-                const uid = this.currentUser.uid;
+                const uid = this.myKey();
                 const messSnap = await db.ref(`users/${uid}/messes`).once('value');
                 const messes = messSnap.val() || {};
                 const updates = {};
@@ -5935,6 +6130,7 @@ https://u2l.ai/MessManager
                     updates[`messes/${mid}/permissions/${uid}`] = null;
                 });
                 updates[`users/${uid}`] = null;
+                if (this.currentUser && this.currentUser.uid !== uid) updates[`users/${this.currentUser.uid}`] = null;
                 await db.ref().update(updates);
                 await this.currentUser.delete();
                 this.toast('Account deleted', 'success');
