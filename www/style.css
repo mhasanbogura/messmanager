@@ -1842,6 +1842,11 @@ select.input-sm { cursor: pointer; }
 .adash-table tbody tr:last-child td:first-child { border-radius: 0 0 0 14px; }
 .adash-table tbody tr:last-child td:last-child { border-radius: 0 0 14px 0; }
 .adash-table .empty-state { color: #999; padding: 16px; }
+.adash-table tbody tr.adash-total td {
+    background: linear-gradient(135deg, #cfd8dc, #b0bec5);
+    border-top: 2px solid #90a4ae;
+}
+.adash-table tbody tr.adash-total td strong { font-weight: 700; }
 
 @media (max-width: 480px) {
     .adash-user h2 { font-size: 19px; }
@@ -3321,6 +3326,7 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .adash-table td.pos strong { color: #4caf50 !important; }
 [data-theme="oled"] .adash-table td.neg strong { color: #ff6b6b !important; }
 [data-theme="oled"] .adash-table thead th small { color: #555; }
+[data-theme="oled"] .adash-table tbody tr.adash-total td { background: linear-gradient(135deg, #464646, #3a3a3a); border-top-color: #555; }
 [data-theme="oled"] .adash-stats-head .material-icons-round { color: #999; }
 [data-theme="oled"] .adash-stats-head strong { color: #e8ebf1; }
 [data-theme="oled"] .adash-notice { background: #0d0d0d; border-color: #1a1a1a; }

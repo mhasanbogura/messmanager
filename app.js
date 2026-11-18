@@ -82,7 +82,7 @@ const App = {
         dash_utility:'Utility',dash_expense_per_utility:'Expense per utility',dash_analyse:'Analyze',
         dash_meal_summary:'Meal Summary',dash_util_others:'Rent, Utilities & Others',
         dash_table_name:'Name',dash_table_total:'Total',dash_table_expense:'Expense (৳)',dash_table_deposit:'Deposit (৳)',dash_table_balance:'Balance (৳)',
-        dash_table_rent:'Rent (৳)',dash_table_util_others:'Utilities & Others (৳)',
+        dash_table_rent:'Rent (৳)',dash_table_cook:'Cook (৳)',dash_table_util_others:'Utilities (৳)',
         dash_no_data:'No data',
         // Expense Today
         dt_title:'Expense Today',dt_banner:'Expense today',dt_nobody:'Nobody assigned',
@@ -96,9 +96,9 @@ const App = {
         mm_total:'Total Mess Members',mm_no_members:'No members yet',
         mm_peoples_info:'Peoples have the app and have joined this mess. Joining does not put anyone on the meal list — add them under Members for that.',
         mm_no_peoples:'No peoples have joined yet',mm_role_manager:'Manager',mm_role_you:'You',
-        mm_perms_info:'What each People is allowed to do — add meals, add cost, manage the lists. Only Peoples appear here: a member who has never opened the app has nothing to grant.',
+        mm_perms_info:'What each People is allowed to do — manage expenses, money, meals and the lists. Only Peoples appear here: a member who has never opened the app has nothing to grant.',
         mm_perms_manager_note:'The manager always has every permission, whether these are checked or not.',
-        mm_perm_add_expense:'Add Expense',mm_perm_add_meal:'Add Meal',mm_perm_edit_meal:'Edit Meal',
+        mm_perm_add_expense:'Manage Expenses',mm_perm_manage_money:'Manage Money',mm_perm_manage_meals:'Manage Meals',
         mm_perm_manage_perms:'Manage Permissions',mm_perm_manage_people:'Manage People & Members',
         mm_no_perms:'No peoples to set permissions for',
         // Meal Entry
@@ -256,7 +256,7 @@ const App = {
             dash_utility:'ইউটিলিটি',dash_expense_per_utility:'প্রতি ইউটিলিটিতে খরচ',dash_analyse:'বিশ্লেষণ',
             dash_meal_summary:'খাবার সারসংক্ষেপ',dash_util_others:'ভাড়া, ইউটিলিটি ও অন্যান্য',
             dash_table_name:'নাম',dash_table_total:'মোট',dash_table_expense:'খরচ (৳)',dash_table_deposit:'জমা (৳)',dash_table_balance:'ব্যালেন্স (৳)',
-            dash_table_rent:'ভাড়া (৳)',dash_table_util_others:'ইউটিলিটি ও অন্যান্য (৳)',dash_no_data:'কোনো তথ্য নেই',
+            dash_table_rent:'ভাড়া (৳)',dash_table_cook:'রাঁধুনি (৳)',dash_table_util_others:'ইউটিলিটি (৳)',dash_no_data:'কোনো তথ্য নেই',
             // Expense Today
             dt_title:'আজকের খরচ',dt_banner:'আজকের খরচ',dt_nobody:'কেউ নিয়োগ করা হয়নি',
             dt_unassigned:'নিয়োগবিহীন তারিখ',dt_all_assigned:'সব তারিখ নিয়োগ করা হয়েছে',dt_day:'দিন',
@@ -269,9 +269,9 @@ const App = {
             mm_total:'মোট মেস সদস্য',mm_no_members:'এখনো কোনো সদস্য নেই',
             mm_peoples_info:'পিপলসরা অ্যাপ ব্যবহার করে এবং এই মেসে যোগ দিয়েছে। যোগ দেওয়া মানে কাউকে খাবার তালিকায় যোগ করা নয় — সেটির জন্য Members এ যোগ করুন।',
             mm_no_peoples:'এখনো কোনো পিপলস যোগ দেয়নি',mm_role_manager:'ম্যানেজার',mm_role_you:'আপনি',
-            mm_perms_info:'প্রতিটি পিপলসকে কী করতে দেওয়া হবে — খাবার যোগ, খরচ যোগ, তালিকা পরিচালনা। শুধু পিপলসরা এখানে দেখা যায়।',
+            mm_perms_info:'প্রতিটি পিপলসকে কী করতে দেওয়া হবে — খরচ, টাকা ও খাবার পরিচালনা, তালিকা পরিচালনা। শুধু পিপলসরা এখানে দেখা যায়।',
             mm_perms_manager_note:'ম্যানেজার সবসময় সব অনুমতি পান।',
-            mm_perm_add_expense:'খরচ যোগ',mm_perm_add_meal:'খাবার যোগ',mm_perm_edit_meal:'খাবার সম্পাদনা',
+            mm_perm_add_expense:'খরচ পরিচালনা',mm_perm_manage_money:'টাকা পরিচালনা',mm_perm_manage_meals:'খাবার পরিচালনা',
             mm_perm_manage_perms:'অনুমতি পরিচালনা',mm_perm_manage_people:'পিপলস ও সদস্য পরিচালনা',
             mm_no_perms:'অনুমতি দেওয়ার জন্য কোনো পিপলস নেই',
             // Meal Entry
@@ -702,13 +702,19 @@ const App = {
         try { await auth.signInWithEmailAndPassword(email, pass); }
         catch (e) {
             let m = e.message;
-            if (e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password') {
+            if (e.code === 'auth/user-not-found') {
+                m = 'No account found with this email. Please sign up first.';
+            } else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+                // Firebase reports auth/invalid-credential for BOTH a wrong password and an
+                // unknown email, and fetchSignInMethodsForEmail() returns an empty list when
+                // Email Enumeration Protection is enabled. So only a positive lookup may say
+                // "no account" / "wrong password"; otherwise stay neutral.
                 try {
                     const methods = await auth.fetchSignInMethodsForEmail(email);
                     if (methods && methods.includes('google.com')) m = 'This account was created with Google. Tap "Continue with Google" to sign in.';
                     else if (methods && methods.length) m = 'Incorrect password. Please try again.';
-                    else m = 'No account found with this email. Please sign up first.';
-                } catch (e2) { m = 'No account found with this email. Please sign up first.'; }
+                    else m = 'Incorrect email or password. Please try again.';
+                } catch (e2) { m = 'Incorrect email or password. Please try again.'; }
             }
             this.toast(m, 'error');
         }
@@ -2062,8 +2068,8 @@ const App = {
             if (!mids.length) { div.innerHTML = '<p class="empty-state" style="padding:20px;text-align:center;color:#999">No peoples to set permissions for</p>'; return; }
             const pSnap = await db.ref(`messes/${this.messId}/permissions`).once('value');
             const perms = pSnap.val() || {};
-            const permKeys = ['bazarEntry', 'mealEntry', 'mealEdit', 'togglePerms', 'manage'];
-            const permLabels = ['Add Expense', 'Add Meal', 'Edit Meal', 'Manage Permissions', 'Manage People & Members'];
+            const permKeys = ['bazarEntry', 'moneyManage', 'mealEntry', 'togglePerms', 'manage'];
+            const permLabels = ['Manage Expenses', 'Manage Money', 'Manage Meals', 'Manage Permissions', 'Manage People & Members'];
             const colors = ['#E53935','#1565C0','#2E7D32','#FF9800','#7B1FA2','#00838F'];
             const iAmAdmin = this.userRole === 'admin';
             const iCanToggle = iAmAdmin || this.canDo('togglePerms');
@@ -2080,7 +2086,9 @@ const App = {
                 let checks = '';
                 for (let j = 0; j < permKeys.length; j++) {
                     const k = permKeys[j];
-                    const checked = !!userPerms[k];
+                    // Manage Expenses defaults to on; 'Manage Meals' covers mealEntry + legacy mealEdit.
+                    const checked = k === 'bazarEntry' ? userPerms.bazarEntry !== false
+                        : (!!userPerms[k] || (k === 'mealEntry' && !!userPerms['mealEdit']));
                     const canClick = iCanToggle && !isAdmin && !isMe;
                     checks += `<div class="aflat-perm-row">
                         <div class="aflat-perm-check ${checked ? 'checked' : ''}" onclick="App.togglePerm('${id}','${k}',this)" ${!canClick ? 'style="pointer-events:none;opacity:.5"' : ''}>
@@ -2107,7 +2115,11 @@ const App = {
         if (uid === this.currentUser.uid) { this.toast("Can't change own permissions", 'error'); return; }
         try {
             const isChecked = el.classList.toggle('checked');
-            await db.ref(`messes/${this.messId}/permissions/${uid}/${key}`).set(isChecked);
+            const updates = {};
+            updates[`messes/${this.messId}/permissions/${uid}/${key}`] = isChecked;
+            // 'Manage Meals' is one row backed by two stored keys (mealEntry + mealEdit).
+            if (key === 'mealEntry') updates[`messes/${this.messId}/permissions/${uid}/mealEdit`] = isChecked;
+            await db.ref().update(updates);
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
     },
 
@@ -2155,6 +2167,10 @@ const App = {
     canDo(key) {
         if (!this._permsLoaded) return false;
         if (this._userPerms === null) return true;
+        // 'Manage Expenses' is enabled by default; only an explicit false revokes it.
+        if (key === 'bazarEntry') return this._userPerms.bazarEntry !== false;
+        // 'Manage Meals' is stored as mealEntry (+ legacy mealEdit).
+        if (key === 'mealEntry') return !!(this._userPerms.mealEntry || this._userPerms.mealEdit);
         return !!this._userPerms[key];
     },
     checkPerm(key) {
@@ -2410,16 +2426,18 @@ https://u2l.ai/MessManager
             balEl.className = finBal < 0 ? 'neg' : 'pos';
             document.getElementById('dash-rate').textContent = '৳ ' + rate.toFixed(2);
 
-            let totalRent = 0, totalUtilCost = 0;
+            let totalRent = 0, totalCook = 0, totalUtilCost = 0;
             Object.values(bzData).forEach(b => {
                 if ((b.category || 'bazar') !== 'utility') return;
                 if (!b.date || !b.date.startsWith(month)) return;
                 const amt = parseFloat(b.cost) || 0;
-                if ((b.name || '').toLowerCase() === 'rent') totalRent += amt;
+                const nm = (b.name || '').toLowerCase();
+                if (nm === 'rent') totalRent += amt;
+                else if (nm === 'cook') totalCook += amt;
                 else totalUtilCost += amt;
             });
             document.getElementById('dash-util-deposit').textContent = '৳ ' + this.fmtNum(totalUtilDep);
-            const utilBal = totalUtilDep - totalRent - totalUtilCost;
+            const utilBal = totalUtilDep - totalRent - totalCook - totalUtilCost;
             const utilBalEl = document.getElementById('dash-util-balance');
             utilBalEl.textContent = '৳ ' + this.fmtNum(utilBal);
             utilBalEl.className = utilBal < 0 ? 'neg' : 'pos';
@@ -2430,11 +2448,13 @@ https://u2l.ai/MessManager
                 if ((memberMeals[n] || 0) > 0 || (mealDepByName[n] || 0) > 0) t1Names.push(n);
             });
             let html = '';
+            let tTotMeals = 0, tTotCost = 0, tTotDep = 0, tTotBal = 0;
             t1Names.forEach(name => {
                 const total = memberMeals[name] || 0;
                 const cost = total * rate;
                 const dep = mealDepByName[name] || 0;
                 const bal = dep - cost;
+                tTotMeals += total; tTotCost += cost; tTotDep += dep; tTotBal += bal;
                 html += `<tr>
                     <td class="c-name">${this.esc(name)}</td>
                     <td><strong>${this.fmtNum(total)}</strong></td>
@@ -2443,11 +2463,19 @@ https://u2l.ai/MessManager
                     <td class="${bal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(bal)}</strong></td>
                 </tr>`;
             });
+            if (t1Names.length) html += `<tr class="adash-total">
+                    <td class="c-name" data-lang-key="dash_table_total">Total</td>
+                    <td><strong>${this.fmtNum(tTotMeals)}</strong></td>
+                    <td><strong>৳${this.fmtNum(tTotCost)}</strong></td>
+                    <td><strong>৳${this.fmtNum(tTotDep)}</strong></td>
+                    <td class="${tTotBal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(tTotBal)}</strong></td>
+                </tr>`;
             rowsEl.innerHTML = html || '<tr><td colspan="5" class="empty-state">No data</td></tr>';
 
             const utilRows = document.getElementById('dash-utility-rows');
             const utilByName = {};
             const rentByName = {};
+            const cookByName = {};
             Object.values(bzData).forEach(b => {
                 const amt = parseFloat(b.cost) || 0;
                 if (!amt) return;
@@ -2456,32 +2484,48 @@ https://u2l.ai/MessManager
                     const n = resolveName((b.splitWith || b.memberId || '').trim());
                     if (!n) return;
                     if (n !== 'Manager' && !currentNames.has(n)) orphanNames.add(n);
-                    if ((b.name || '').toLowerCase() === 'rent') {
+                    const nm = (b.name || '').toLowerCase();
+                    if (nm === 'rent') {
                         rentByName[n] = (rentByName[n] || 0) + amt;
+                    } else if (nm === 'cook') {
+                        cookByName[n] = (cookByName[n] || 0) + amt;
                     } else {
                         utilByName[n] = (utilByName[n] || 0) + amt;
                     }
                 }
             });
             let utilHtml = '';
+            let tURent = 0, tUCook = 0, tUUtil = 0, tUDep = 0, tUBal = 0;
             const t2Names = memberMids.map(mid => members[mid]?.name || 'Unknown');
             [...orphanNames].sort((a, b) => a.localeCompare(b)).forEach(n => {
-                if ((rentByName[n] || 0) > 0 || (utilByName[n] || 0) > 0 || (utilDepByName[n] || 0) > 0) t2Names.push(n);
+                if ((rentByName[n] || 0) > 0 || (cookByName[n] || 0) > 0 || (utilByName[n] || 0) > 0 || (utilDepByName[n] || 0) > 0) t2Names.push(n);
             });
             t2Names.forEach(name => {
                 const rent = rentByName[name] || 0;
+                const cook = cookByName[name] || 0;
                 const util = utilByName[name] || 0;
                 const dep = utilDepByName[name] || 0;
-                const bal = dep - rent - util;
+                const bal = dep - rent - cook - util;
+                tURent += rent; tUCook += cook; tUUtil += util; tUDep += dep; tUBal += bal;
                 utilHtml += `<tr>
                     <td class="c-name">${this.esc(name)}</td>
                     <td><strong>৳${this.fmtNum(rent)}</strong></td>
+                    <td><strong>৳${this.fmtNum(cook)}</strong></td>
                     <td><strong>৳${this.fmtNum(util)}</strong></td>
                     <td><strong>৳${this.fmtNum(dep)}</strong></td>
                     <td class="${bal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(bal)}</strong></td>
                 </tr>`;
             });
-            utilRows.innerHTML = utilHtml || '<tr><td colspan="5" class="empty-state">No data</td></tr>';
+            if (t2Names.length) utilHtml += `<tr class="adash-total">
+                    <td class="c-name" data-lang-key="dash_table_total">Total</td>
+                    <td><strong>৳${this.fmtNum(tURent)}</strong></td>
+                    <td><strong>৳${this.fmtNum(tUCook)}</strong></td>
+                    <td><strong>৳${this.fmtNum(tUUtil)}</strong></td>
+                    <td><strong>৳${this.fmtNum(tUDep)}</strong></td>
+                    <td class="${tUBal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(tUBal)}</strong></td>
+                </tr>`;
+            utilRows.innerHTML = utilHtml || '<tr><td colspan="6" class="empty-state">No data</td></tr>';
+            this.applyLanguage();
             this.loadJoinRequests(members);
             this._hideSplash();
         } catch (e) { console.error('loadDashboard error:', e); this._hideSplash(); }
@@ -2548,7 +2592,7 @@ https://u2l.ai/MessManager
             const m = mSnap.val() || {};
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/status`] = 'active';
-                updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: false, mealEntry: false, mealEdit: false, togglePerms: false, manage: false };
+                updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: true, mealEntry: false, mealEdit: false, moneyManage: false, togglePerms: false, manage: false };
             await db.ref().update(updates);
             // Give the member their mess index so they land straight in the app.
             // Best effort: older/stricter rules may block an admin from writing
@@ -2936,6 +2980,7 @@ https://u2l.ai/MessManager
 
     mealCellClick(e, memberName, dateKey, mealType, currentVal) {
         e.stopPropagation();
+        if (!this.checkPerm('mealEntry')) return;
         const existing = document.querySelector('.meal-cell-popup');
         if (existing) existing.remove();
         const popup = document.createElement('div');
@@ -3575,6 +3620,7 @@ https://u2l.ai/MessManager
 
     async deleteBazarItem(key) {
         if (!this.messId) return;
+        if (!this.checkPerm('bazarEntry')) return;
         if (!confirm('Delete this cost item?')) return;
         const snap = await db.ref(`messes/${this.messId}/bazarItems/${key}`).once('value');
         const item = snap.val();
@@ -3623,6 +3669,7 @@ https://u2l.ai/MessManager
     },
 
     editBazarItem(key, name, cost, memberId, date, category) {
+        if (!this.checkPerm('bazarEntry')) return;
         this._editBzKey = key;
         const found = (this._allBazar || []).find(([k]) => k === key);
         const v = found ? found[1] : {};
@@ -3665,6 +3712,7 @@ https://u2l.ai/MessManager
     },
 
     async saveBazarEdit(key, category) {
+        if (!this.checkPerm('bazarEntry')) return;
         const name = document.getElementById('edit-bz-name').value.trim();
         const cost = parseFloat(document.getElementById('edit-bz-cost').value) || 0;
         const memberName = document.getElementById('edit-bz-member').value;
@@ -3857,6 +3905,7 @@ https://u2l.ai/MessManager
 
     async deleteDeposit(key) {
         if (!this.messId) return;
+        if (!this.checkPerm('moneyManage')) return;
         if (!confirm('Delete this deposit?')) return;
         const snap = await db.ref(`messes/${this.messId}/deposits/${key}`).once('value');
         const item = snap.val();
@@ -3871,6 +3920,7 @@ https://u2l.ai/MessManager
     },
 
     editDeposit(key, memberId, amount, category, date) {
+        if (!this.checkPerm('moneyManage')) return;
         const members = this._depMembers || {};
         const currentName = memberId || Object.values(members)[0]?.name || '';
         const names = Object.entries(members).filter(([id]) => id.startsWith('member_')).map(([, m]) => m.name || 'Unknown');
@@ -3898,6 +3948,7 @@ https://u2l.ai/MessManager
     },
 
     async saveDepositEdit(key) {
+        if (!this.checkPerm('moneyManage')) return;
         const memberName = document.getElementById('edit-dep-member').value;
         const amount = parseFloat(document.getElementById('edit-dep-amount').value) || 0;
         const category = document.getElementById('edit-dep-cat').value;
@@ -3995,7 +4046,7 @@ https://u2l.ai/MessManager
 
     async loadAddDeposit() {
         if (!this.messId) return;
-        if (!this.checkPerm('bazarEntry')) { this.navigate('balance'); return; }
+        if (!this.checkPerm('moneyManage')) { this.navigate('balance'); return; }
         const snap = await db.ref(`messes/${this.messId}/members`).once('value');
         const members = snap.val() || {};
         const mids = Object.keys(members).filter(id => id.startsWith('member_')).sort((a, b) => (members[a]?.name || '').localeCompare((members[b]?.name || '')));
@@ -4335,6 +4386,7 @@ https://u2l.ai/MessManager
     },
 
     async bzSave() {
+        if (!this.checkPerm('bazarEntry')) return false;
         this._hintOffline();
         const dateKey = this._bzDate;
         const userName = this.currentUser?.displayName || 'Unknown';
@@ -4394,7 +4446,7 @@ https://u2l.ai/MessManager
 
     async loadAddDeposit() {
         if (!this.messId) return;
-        if (!this.checkPerm('bazarEntry')) { this.navigate('balance'); return; }
+        if (!this.checkPerm('moneyManage')) { this.navigate('balance'); return; }
         const snap = await db.ref(`messes/${this.messId}/members`).once('value');
         const members = snap.val() || {};
         const mids = Object.keys(members).filter(id => id.startsWith('member_')).sort((a, b) => (members[a]?.name || '').localeCompare((members[b]?.name || '')));
@@ -4421,6 +4473,7 @@ https://u2l.ai/MessManager
     },
 
     saveDepositPage() {
+        if (!this.checkPerm('moneyManage')) return;
         const memberName = this._depSelected;
         const amount = parseFloat(document.getElementById('dep-amount')?.value) || 0;
         if (!memberName) { this.toast('Money from: pick a name', 'error'); return; }
@@ -4436,7 +4489,7 @@ https://u2l.ai/MessManager
 
     async showAddDeposit() {
         if (!this.messId) return;
-        if (!this.checkPerm('bazarEntry')) return;
+        if (!this.checkPerm('moneyManage')) return;
         const snap = await db.ref(`messes/${this.messId}/members`).once('value');
         const members = snap.val() || {};
         const mids = Object.keys(members).filter(id => id.startsWith('member_')).sort((a, b) => (members[a]?.name || '').localeCompare(members[b]?.name || ''));
@@ -4517,6 +4570,7 @@ https://u2l.ai/MessManager
     },
 
     async saveDeposit() {
+        if (!this.checkPerm('moneyManage')) return;
         this._hintOffline();
         const memberName = this._depSelected;
         const amount = parseFloat(document.getElementById('dep-amount')?.value) || 0;
@@ -5926,6 +5980,12 @@ https://u2l.ai/MessManager
     // Forced-update flag: blocks closeDialog(), backdrop clicks and the back button.
     _updatingForUpdate: false,
 
+    /* True inside the Android app (Capacitor shell), false in a browser/PWA —
+       window.Capacitor only exists when the native shell injects it. */
+    _isNativeApp() {
+        return !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+    },
+
     /* Current installed build (versionCode) — read from the native package info
        and the profile version string, taking the highest value so a stale source
        (e.g. a page string not yet refreshed right after an update) can never make
@@ -5989,9 +6049,12 @@ https://u2l.ai/MessManager
         }
     },
 
-    /* Boot check — shows the forced popup when a newer build exists on Drive. */
+    /* Boot check — shows the forced popup when a newer build exists on Drive.
+       App-only: browsers/PWA can't install an APK, so the web build never
+       auto-shows the update dialog (Settings → Update App still works there). */
     async checkAppUpdate() {
         if (this._updatingForUpdate) return;
+        if (!this._isNativeApp()) return;
         const info = await this._scanDriveForUpdate();
         if (info && info.ok && info.available) this.showForcedUpdatePopup(info);
     },
@@ -6010,12 +6073,16 @@ https://u2l.ai/MessManager
         }
     },
 
-    /* Forced (non-dismissible) update dialog — only shown when a newer build exists. */
+    /* Update dialog — shown when a newer build exists. Inside the app it is
+       forced (non-dismissible; Update is the only way out). On the web the same
+       dialog is dismissible and its Update button just downloads the APK in the
+       browser — force mode is app-only, browsers can't install an APK. */
     showForcedUpdatePopup(info) {
         // Prevent duplicate popups
         if (document.getElementById('dlg').hidden === false) return;
 
-        this._updatingForUpdate = true;
+        const forced = this._isNativeApp();
+        if (forced) this._updatingForUpdate = true;
 
         this.openDialog(
             '',
@@ -6030,18 +6097,21 @@ https://u2l.ai/MessManager
                 cls: 'primary',
                 fn: (btn) => {
                     this._styleUpdateButton(btn);
-                    btn.textContent = 'Downloading... 0%';
-                    this.startUpdateDownload(info, percent => {
-                        btn.textContent = percent < 100 ? `Downloading... ${percent}%` : 'Installing...';
-                    });
+                    if (forced) {
+                        btn.textContent = 'Downloading... 0%';
+                        this.startUpdateDownload(info, percent => {
+                            btn.textContent = percent < 100 ? `Downloading... ${percent}%` : 'Installing...';
+                        });
+                    } else {
+                        // Browser: start the APK download, then get out of the way.
+                        try { location.href = info.downloadUrl; } catch (e) {}
+                        this.closeDialog();
+                        this.toast('Download started — open the file to install', 'info');
+                    }
                 }
             }],
-            false // canClose = false → backdrop click does nothing
+            !forced // canClose = false only in the app → backdrop click does nothing
         );
-
-        // Disable background click for forced update (no way out except Update)
-        const dlg = document.getElementById('dlg');
-        dlg.onclick = e => { if (e.target.id === 'dlg') return; };
 
         // Force button to be full width blue in CSS
         setTimeout(() => {

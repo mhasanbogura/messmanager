@@ -64,16 +64,16 @@
           ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEntry').val() === true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('mealEdit').val() === true)"
         },
         "bazarItems": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() != false)"
         },
         "costTrash": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() != false)"
         },
         "deposits": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('moneyManage').val() === true)"
         },
         "depTrash": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('moneyManage').val() === true)"
         },
         "notices": {
           ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"
@@ -82,7 +82,7 @@
           ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"
         },
         "bazarDuty": {
-          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() === true)"
+          ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('bazarEntry').val() != false)"
         },
         "bazarNote": {
           ".write": "auth != null && root.child('messes').child($mid).child('members').child(auth.uid).child('role').exists() && (root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"

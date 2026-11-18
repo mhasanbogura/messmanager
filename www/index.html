@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Mess Manager</title>
     <link rel="icon" type="image/png" href="app-icon.png?v=1.4.40">
-    <link rel="stylesheet" href="style.css?v=202611141200">
+    <link rel="stylesheet" href="style.css?v=202611180923">
     <link href="fonts/material-icons.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -275,13 +275,14 @@
                                 <tr>
                                     <th data-lang-key="dash_table_name">Name</th>
                                     <th data-lang-key="dash_table_rent">Rent (৳)</th>
-                                    <th data-lang-key="dash_table_util_others">Utilities & Others (৳)</th>
+                                    <th data-lang-key="dash_table_cook">Cook (৳)</th>
+                                    <th data-lang-key="dash_table_util_others">Utilities (৳)</th>
                                     <th data-lang-key="dash_table_deposit">Deposit (৳)</th>
                                     <th data-lang-key="dash_table_balance">Balance (৳)</th>
                                 </tr>
                             </thead>
                             <tbody id="dash-utility-rows">
-                                <tr><td colspan="5" class="empty-state">No data</td></tr>
+                                <tr><td colspan="6" class="empty-state">No data</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -357,7 +358,7 @@
                 <div class="aflat-tab-content" id="flat-tab-permissions" style="display:none">
                     <div class="aflat-info-box orange">
                         <span class="material-icons-round">lock</span>
-                        <p data-lang-key="mm_perms_info">What each People is allowed to do — add meals, add cost, manage the lists. Only Peoples appear here: a Member who has never opened the app has nothing to grant.</p>
+                        <p data-lang-key="mm_perms_info">What each People is allowed to do — manage expenses, money, meals and the lists. Only Peoples appear here: a Member who has never opened the app has nothing to grant.</p>
                     </div>
                     <div id="flat-permissions-list"></div>
                     <p class="aflat-perm-note"><span class="material-icons-round">info</span> <span data-lang-key="mm_perms_manager_note">The manager always has every permission, whether these are checked or not.</span></p>
@@ -723,6 +724,6 @@
     <script src="firebase-auth-compat.js" defer></script>
     <script src="firebase-database-compat.js" defer></script>
     <script src="firebase-config.js" defer></script>
-    <script src="app.js?v=202611141200" defer></script>
+    <script src="app.js?v=202611180941" defer></script>
 </body>
 </html>
