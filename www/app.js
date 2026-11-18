@@ -187,7 +187,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_version:'Version 1.6.12 (build 771)',
-        prof_update:'Update App',
+        prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
         // Select Month
@@ -360,7 +360,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_version:'ভার্সন 1.6.12 (বিল্ড 771)',
-            prof_update:'অ্যাপ আপডেট',
+            prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
             // Select Month
@@ -4872,17 +4872,25 @@ https://u2l.ai/MessManager
     },
     _applyPlatformRows() {
         const native = !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
-        console.log("Native platform check:", native);
-        
+
         const shareRow = document.getElementById('row-share-app');
         const updateRow = document.getElementById('row-update-app');
-        
-        console.log("Share row:", shareRow, "Update row:", updateRow);
-        
+
         if (shareRow) shareRow.style.display = native ? 'flex' : 'none';
         if (updateRow) {
             updateRow.style.display = 'flex';
-            console.log("Forced updateRow display to flex");
+            // The app updates itself in place; a browser can only download the
+            // APK — so the web build presents the row as "Download App".
+            const ico = updateRow.querySelector('.material-icons-round');
+            if (ico) ico.textContent = native ? 'system_update_alt' : 'system_update';
+            const lbl = updateRow.querySelector('.aprof-label');
+            if (lbl) {
+                const key = native ? 'prof_update' : 'prof_download';
+                lbl.setAttribute('data-lang-key', key);
+                const lang = localStorage.getItem('mess_lang') || 'en';
+                const text = lang === 'bn' ? this._bnText(key) : this._translations[key];
+                if (text) lbl.textContent = text;
+            }
         }
     },
     _driveFiles: {
