@@ -44,6 +44,7 @@
         "permissions": {
           "$pkey": {
             ".read": "auth != null",
+            ".write": "auth != null && (root.child('messes').child($mid).child('members').child(auth.token.email.replace('.', '%2E')).child('role').val() == 'admin' || root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.token.email.replace('.', '%2E')).child('manage').val() === true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)",
             "$key": {
               ".read": "auth != null",
               ".write": "auth != null && (root.child('messes').child($mid).child('members').child(auth.token.email.replace('.', '%2E')).child('role').val() == 'admin' || root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.token.email.replace('.', '%2E')).child('manage').val() === true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('manage').val() === true)"

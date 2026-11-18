@@ -4,6 +4,10 @@
 node_modules/
 .env
 
+# Database dumps and one-off migration output (contain personal data)
+db-*.json
+_merge/
+
 # Local build outputs / test files (not part of the repo)
 app-debug.apk
 icon-test.html

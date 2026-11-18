@@ -57,7 +57,23 @@ const App = {
         try {
             const snap = await db.ref(path).once('value');
             if (this._cacheVersion !== ver) return;
-            this._cacheSet(cacheKey, snap.val() || {});
+            const fresh = snap.val() || {};
+            const cached = this._cacheGet(cacheKey);
+            this._cacheSet(cacheKey, fresh);
+            // The page was drawn from the cached copy, so a change made elsewhere
+            // (join, approval, merged duplicate) would never show up. Redraw once
+            // the fresh copy differs; throttled so it cannot loop.
+            const sig = o => Object.keys(o || {}).sort().map(k => k + '=' + JSON.stringify(o[k])).join('&');
+            if (this.messId && sig(fresh) !== sig(cached)) {
+                this._bgRefreshQueued = this._bgRefreshQueued || {};
+                if (!this._bgRefreshQueued[cacheKey]) {
+                    this._bgRefreshQueued[cacheKey] = true;
+                    setTimeout(() => {
+                        this._bgRefreshQueued[cacheKey] = false;
+                        try { this._refreshCurrentPage(); } catch (e) {}
+                    }, 400);
+                }
+            }
         } catch (e) {}
     },
     async _dbRef(query) {
@@ -2050,7 +2066,20 @@ const App = {
         const div = document.getElementById('flat-peoples-list');
         try {
             const mids = Object.keys(members);
-            const appUsers = mids.filter(id => !id.startsWith('member_') && (members[id] || {}).status !== 'pending');
+            const rawUsers = mids.filter(id => !id.startsWith('member_') && (members[id] || {}).status !== 'pending');
+            // One row per person: collapse leftover rows that share an e-mail
+            // (older builds keyed members by uid), preferring the admin row, then
+            // the e-mail-keyed record itself.
+            const rank = id => (((members[id] || {}).role === 'admin') ? 2 : 0) + (id === this._emailKey((members[id] || {}).email) ? 1 : 0);
+            const byEmail = new Map();
+            const noEmail = [];
+            rawUsers.forEach(id => {
+                const k = this._emailKey((members[id] || {}).email);
+                if (!k) { noEmail.push(id); return; }
+                const cur = byEmail.get(k);
+                if (!cur || rank(id) > rank(cur)) byEmail.set(k, id);
+            });
+            const appUsers = Array.from(byEmail.values()).concat(noEmail);
             appUsers.sort((a, b) => ((members[a] || {}).name || '').localeCompare((members[b] || {}).name || ''));
             document.getElementById('flat-peoples-count').textContent = appUsers.length;
             if (!appUsers.length) { div.innerHTML = '<p class="empty-state" style="padding:20px;text-align:center;color:#999">No peoples have joined yet</p>'; return; }
