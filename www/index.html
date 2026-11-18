@@ -343,7 +343,7 @@
                         </div>
                         <button class="aflat-add-btn" onclick="App.addFlatMember()" data-lang-key="mm_add">ADD</button>
                     </div>
-                    <p class="aflat-hint" id="flat-add-hint" data-lang-key="mm_add_hint">Unique name; letters, numbers & spaces only (e.g. Ziad1, Ziad2) <span id="flat-name-count">0/20</span></p>
+                    <p class="aflat-hint" id="flat-add-hint"><span data-lang-key="mm_add_hint">Unique name; letters, numbers & spaces only (e.g. Ziad1, Ziad2)</span> <span id="flat-name-count">0/20</span></p>
                     <div class="aflat-divider"></div>
                     <p class="aflat-total"><span data-lang-key="mm_total">Total Mess Members</span>: <strong id="flat-member-count">0</strong></p>
                     <div id="flat-member-list"></div>
@@ -569,29 +569,6 @@
                 </div>
             </div>
 
-            <!-- MENU TODAY PAGE -->
-            <div class="page" id="page-menu">
-                <div class="amenu-head">
-                    <h2 data-lang-key="mt_title">Menu Today</h2>
-                    <button class="icon-btn" onclick="App.toast('Menu history coming soon','info')"><span class="material-icons-round">schedule</span></button>
-                </div>
-                <div class="amenu-body">
-                    <div class="amenu-current">
-                        <span class="material-icons-round">restaurant</span>
-                        <div>
-                            <strong data-lang-key="mt_dinner_now">Dinner now</strong> <small data-lang-key="mt_after_8pm">after 8:00pm</small>
-                            <p id="amenu-dinner-status" data-lang-key="mt_nothing_set">Nothing set for now</p>
-                        </div>
-                    </div>
-                    <div class="amenu-tabs">
-                        <button class="amenu-tab active" data-tab="upcoming" onclick="App.switchMenuTab('upcoming')"><span class="material-icons-round">view_agenda</span> <span data-lang-key="mt_tab_upcoming">Upcoming menus</span></button>
-                        <button class="amenu-tab" data-tab="items" onclick="App.switchMenuTab('items')"><span class="material-icons-round">list</span> <span data-lang-key="mt_tab_items">Items</span></button>
-                        <button class="amenu-tab" data-tab="special" onclick="App.switchMenuTab('special')"><span class="material-icons-round">star</span> <span data-lang-key="mt_tab_special">Special days</span></button>
-                    </div>
-                    <div id="amenu-tab-content"></div>
-                </div>
-                <button class="amenu-fab" onclick="App.showAddMenu()"><span class="material-icons-round">add</span> <span data-lang-key="mt_add">Add</span></button>
-            </div>
             <div class="page" id="page-profile">
                 <div class="aprof-head">
                     <div>

@@ -202,7 +202,7 @@ const App = {
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
-        prof_version:'Version 1.6.13 (build 774)',
+        prof_version:'Version 1.6.14 (build 777)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -375,7 +375,7 @@ const App = {
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
-            prof_version:'ভার্সন 1.6.13 (বিল্ড 774)',
+            prof_version:'ভার্সন 1.6.14 (বিল্ড 777)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -1647,9 +1647,8 @@ const App = {
         document.getElementById('app-screen').classList.toggle('on-duty', page === 'duty');
         document.getElementById('app-screen').classList.toggle('on-members', page === 'members');
         document.getElementById('app-screen').classList.toggle('on-bazarnote', page === 'bazarnote');
-        document.getElementById('app-screen').classList.toggle('on-menu', page === 'menu');
         document.getElementById('app-screen').classList.toggle('on-monthly', page === 'monthly');
-        const titles = { dashboard: this.t('nav_dashboard'), members: this.t('mm_title'), meals: this.t('me_title'), bazaar: this.t('el_title'), balance: this.t('mm2_title'), notices: this.t('nb_title'), monthly: this.t('an_title'), profile: this.t('prof_title'), duty: this.t('dt_title'), bazarnote: this.t('bn_title'), menu: this.t('mt_title'), mealhistory: this.t('mr_title'), costtrash: this.t('de_title'), deptrash: this.t('dt2_title') };
+        const titles = { dashboard: this.t('nav_dashboard'), members: this.t('mm_title'), meals: this.t('me_title'), bazaar: this.t('el_title'), balance: this.t('mm2_title'), notices: this.t('nb_title'), monthly: this.t('an_title'), profile: this.t('prof_title'), duty: this.t('dt_title'), bazarnote: this.t('bn_title'), mealhistory: this.t('mr_title'), costtrash: this.t('de_title'), deptrash: this.t('dt2_title') };
         const hideTopbar = [];
         document.getElementById('page-title').textContent = titles[page] || page.charAt(0).toUpperCase() + page.slice(1);
         document.querySelector('.topbar').style.display = '';
@@ -1689,7 +1688,6 @@ const App = {
         if (page === 'balance') this.loadManagerMoney();
         if (page === 'profile') this.loadProfile();
         if (page === 'bazarnote') this.loadBazarNote();
-        if (page === 'menu') this.loadMenu();
         if (page === 'monthly') this.loadMonthly();
         if (page === 'mealhistory') this.loadMealHistory();
         if (page === 'costtrash') this.loadCostTrash();
@@ -4177,7 +4175,7 @@ https://u2l.ai/MessManager
         const amount = parseFloat(document.getElementById('edit-dep-amount').value) || 0;
         const category = document.getElementById('edit-dep-cat').value;
         const date = document.getElementById('edit-dep-date').value;
-        if (amount <= 0) { this.toast('Enter amount', 'error'); return; }
+        if (amount === 0) { this.toast('Enter amount', 'error'); return; } // negatives allowed (adjustment entries)
         const userName = this.currentUser?.displayName || 'Unknown';
         await db.ref(`messes/${this.messId}/deposits/${key}`).update({ memberId: memberName, amount, category, date, editedBy: userName, editedAt: Date.now() });
         this.closeModal();
@@ -5053,7 +5051,6 @@ https://u2l.ai/MessManager
             notices: () => this.loadNotices(),
             members: () => this.loadFlat(),
             bazarnote: () => this.loadBazarNote(),
-            menu: () => this.loadMenu(),
             mealhistory: () => this.loadMealHistory(),
             profile: () => this.loadProfile(),
             addmeal: () => this.loadAddMeal(),
@@ -5103,18 +5100,21 @@ https://u2l.ai/MessManager
         if (shareRow) shareRow.style.display = native ? 'flex' : 'none';
         if (updateRow) {
             updateRow.style.display = 'flex';
-            // The app updates itself in place; a browser can only download the
-            // APK — so the web build presents the row as "Download App".
+            // The app updates itself in place; a browser has no in-app update,
+            // so the web build offers the Android app instead.
             const ico = updateRow.querySelector('.material-icons-round');
-            if (ico) ico.textContent = native ? 'system_update_alt' : 'system_update';
+            if (ico) ico.textContent = native ? 'system_update_alt' : 'download';
             const lbl = updateRow.querySelector('.aprof-label');
             if (lbl) {
-                const key = native ? 'prof_update' : 'prof_download';
+                const key = native ? 'prof_update' : 'prof_get_app';
                 lbl.setAttribute('data-lang-key', key);
                 const lang = localStorage.getItem('mess_lang') || 'en';
                 const text = lang === 'bn' ? this._bnText(key) : this._translations[key];
                 if (text) lbl.textContent = text;
             }
+            // Web only: open the Android app page in the same tab. The app keeps
+            // its markup handler (App.checkUpdate) untouched.
+            if (!native) updateRow.onclick = () => { window.location.href = 'https://u2l.ai/MessManager'; };
         }
     },
     _driveFiles: {
@@ -5320,154 +5320,6 @@ https://u2l.ai/MessManager
             this.loadBazarNote();
         } catch (e) { this.toast('Error: ' + e.message, 'error'); }
     },
-
-    // ==================== MENU TODAY PAGE ====================
-    async loadMenu() {
-        if (!this.messId) return;
-        const now = new Date();
-        const todayKey = this.dk(now);
-        const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        try {
-            const menuSnap = await db.ref(`messes/${this.messId}/menus/${todayKey}`).once('value');
-            const todayMenu = menuSnap.val();
-            const dinnerEl = document.getElementById('amenu-dinner-status');
-            if (todayMenu && todayMenu.dinner) {
-                dinnerEl.textContent = todayMenu.dinner;
-                dinnerEl.style.color = '#1a1a1a';
-            } else {
-                dinnerEl.textContent = 'Nothing set for now';
-                dinnerEl.style.color = '#999';
-            }
-            const div = document.getElementById('amenu-tab-content');
-            this._menuTab = 'upcoming';
-            this.renderMenuUpcoming(div, now, weekdays, months);
-        } catch (e) { console.error('loadMenu error:', e); }
-    },
-
-    renderMenuUpcoming(div, now, weekdays, months) {
-        let html = '';
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(now);
-            d.setDate(now.getDate() + i);
-            const dk = this.dk(d);
-            const isToday = i === 0;
-            html += `<div class="amenu-day-card${isToday ? ' today' : ''}">
-                <div class="amenu-day-top"><strong>${weekdays[d.getDay()]}</strong><span>${d.getDate()} ${months[d.getMonth()]}</span>${isToday ? '<span class="amenu-badge">Today</span>' : ''}</div>
-                <p class="amenu-day-menu" id="amenu-day-${dk}">Nothing set</p>
-            </div>`;
-        }
-        div.innerHTML = html;
-        this.loadMenuDays(now, 7);
-    },
-
-    async loadMenuDays(now, count) {
-        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        try {
-            const menusSnap = await db.ref(`messes/${this.messId}/menus`).once('value');
-            const allMenus = menusSnap.val() || {};
-            for (let i = 0; i < count; i++) {
-                const d = new Date(now);
-                d.setDate(now.getDate() + i);
-                const dk = this.dk(d);
-                const menu = allMenus[dk];
-                if (menu) {
-                    const el = document.getElementById(`amenu-day-${dk}`);
-                    if (el) {
-                        const parts = [];
-                        if (menu.breakfast) parts.push('🌅 ' + menu.breakfast);
-                        if (menu.lunch) parts.push('🍜 ' + menu.lunch);
-                        if (menu.dinner) parts.push('🍽 ' + menu.dinner);
-                        el.textContent = parts.join(' · ') || 'Nothing set';
-                        el.style.color = parts.length ? '#333' : '#999';
-                    }
-                }
-            }
-        } catch (e) { /* ignore */ }
-    },
-
-    switchMenuTab(tab) {
-        this._menuTab = tab;
-        document.querySelectorAll('.amenu-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-        const div = document.getElementById('amenu-tab-content');
-        const now = new Date();
-        const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        if (tab === 'upcoming') {
-            this.renderMenuUpcoming(div, now, weekdays, months);
-        } else if (tab === 'items') {
-            div.innerHTML = '<div class="amenu-section"><p class="amenu-hint">Items shared across all menus</p><div id="amenu-items-list"></div></div>';
-            this.loadMenuItems();
-        } else if (tab === 'special') {
-            div.innerHTML = '<div class="amenu-section"><p class="amenu-hint">Special menus for specific dates</p><div id="amenu-special-list"></div><button class="amenu-add-special" onclick="App.toast(\'Add special day coming soon\',\'info\')"><span class="material-icons-round">add</span> Add special day</button></div>';
-        }
-    },
-
-    async loadMenuItems() {
-        try {
-            const snap = await db.ref(`messes/${this.messId}/menuItems`).once('value');
-            const items = snap.val() || {};
-            const keys = Object.keys(items);
-            const div = document.getElementById('amenu-items-list');
-            if (!div) return;
-            if (!keys.length) { div.innerHTML = '<p class="amenu-empty">No items yet</p>'; return; }
-            div.innerHTML = keys.map(k => `<div class="amenu-item-row"><span>${this.esc(items[k].name || items[k])}</span></div>`).join('');
-        } catch (e) { /* ignore */ }
-    },
-
-    async showAddMenu() {
-        const now = new Date();
-        const input = document.createElement('input');
-        input.type = 'date';
-        input.value = this.dk(now);
-        input.addEventListener('change', () => {
-            if (input.value) this.openMenuEditor(input.value);
-        });
-        input.click();
-    },
-
-    async openMenuEditor(dateKey) {
-        if (!this.messId) return;
-        const dd = new Date(dateKey + 'T00:00:00');
-        const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        const label = `${weekdays[dd.getDay()]}, ${dd.getDate()} ${months[dd.getMonth()]}`;
-        let existing = {};
-        try {
-            const snap = await db.ref(`messes/${this.messId}/menus/${dateKey}`).once('value');
-            existing = snap.val() || {};
-        } catch (e) { /* ignore */ }
-        document.getElementById('modal-title').textContent = `Menu — ${label}`;
-        document.getElementById('modal-body').innerHTML = `
-            <div class="amenu-form-row"><label>🌅 Breakfast</label><input type="text" id="menu-bf" placeholder="What's for breakfast?" value="${this.esc(existing.breakfast || '')}"></div>
-            <div class="amenu-form-row"><label>🍜 Lunch</label><input type="text" id="menu-ln" placeholder="What's for lunch?" value="${this.esc(existing.lunch || '')}"></div>
-            <div class="amenu-form-row"><label>🍽 Dinner</label><input type="text" id="menu-dn" placeholder="What's for dinner?" value="${this.esc(existing.dinner || '')}"></div>`;
-        document.getElementById('modal-footer').innerHTML = `<div class="dep-footer-btns"><button class="btn-modal-add" onclick="App.saveMenu('${dateKey}')">Save</button></div>`;
-        this.openModal();
-    },
-
-    async saveMenu(dateKey) {
-        this._hintOffline();
-        const bf = document.getElementById('menu-bf')?.value.trim() || '';
-        const ln = document.getElementById('menu-ln')?.value.trim() || '';
-        const dn = document.getElementById('menu-dn')?.value.trim() || '';
-        const data = {};
-        if (bf) data.breakfast = bf;
-        if (ln) data.lunch = ln;
-        if (dn) data.dinner = dn;
-        try {
-            if (Object.keys(data).length) {
-                await db.ref(`messes/${this.messId}/menus/${dateKey}`).set(data);
-            } else {
-                await db.ref(`messes/${this.messId}/menus/${dateKey}`).remove();
-            }
-            this.closeModal();
-            this._cacheClearAll();
-            this.loadMenu();
-            this.toast('Menu saved!', 'success');
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
-    },
-
     // ==================== ANALYSIS PAGE ====================
     async loadMonthly() {
         if (!this.messId) return;
@@ -6123,16 +5975,16 @@ https://u2l.ai/MessManager
         const body = document.getElementById('modal-body');
         if (isGoogle) {
             body.innerHTML = `<p style="margin:0 0 16px;font-size:15px">This will permanently delete your account and all data. Sign in with Google to confirm.</p>
-                <div style="display:flex;gap:10px;justify-content:flex-end">
-                    <button id="confirm-yes" style="padding:10px 24px;border:none;border-radius:8px;background:linear-gradient(135deg,#F44336,#D32F2F);color:#fff;font-size:14px;font-weight:600;cursor:pointer">Sign in & Delete</button>
-                    <button id="confirm-no" style="padding:10px 24px;border:none;border-radius:8px;background:linear-gradient(135deg,#9aa3af,#5b6472);color:#fff;font-size:14px;cursor:pointer">Cancel</button>
+                <div class="modal-confirm-actions">
+                    <button id="confirm-no" class="btn-cancel">Cancel</button>
+                    <button id="confirm-yes" class="btn-danger">Sign in & Delete</button>
                 </div>`;
         } else {
             body.innerHTML = `<p style="margin:0 0 16px;font-size:15px">This will permanently delete your account and all data. Enter your password to confirm.</p>
                 <input id="delete-pw" type="password" placeholder="Password" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:16px;box-sizing:border-box">
-                <div style="display:flex;gap:10px;justify-content:flex-end">
-                    <button id="confirm-yes" style="padding:10px 24px;border:none;border-radius:8px;background:linear-gradient(135deg,#F44336,#D32F2F);color:#fff;font-size:14px;font-weight:600;cursor:pointer">Delete Account</button>
-                    <button id="confirm-no" style="padding:10px 24px;border:none;border-radius:8px;background:linear-gradient(135deg,#9aa3af,#5b6472);color:#fff;font-size:14px;cursor:pointer">Cancel</button>
+                <div class="modal-confirm-actions">
+                    <button id="confirm-no" class="btn-cancel">Cancel</button>
+                    <button id="confirm-yes" class="btn-danger">Delete Account</button>
                 </div>`;
         }
         document.getElementById('modal-title').textContent = 'Delete Account';
@@ -6168,10 +6020,10 @@ https://u2l.ai/MessManager
     },
     showConfirm(title, msg, cb) {
         const body = document.getElementById('modal-body');
-        body.innerHTML = `<p style="margin:0 0 16px;font-size:15px">${msg}</p>
-            <div style="display:flex;gap:10px;justify-content:flex-end">
-                <button id="confirm-yes" style="padding:10px 24px;border:none;border-radius:8px;background:linear-gradient(135deg,#F44336,#D32F2F);color:#fff;font-size:14px;font-weight:600;cursor:pointer">Confirm</button>
-                <button id="confirm-no" style="padding:10px 24px;border:none;border-radius:8px;background:linear-gradient(135deg,#9aa3af,#5b6472);color:#fff;font-size:14px;cursor:pointer">Cancel</button>
+        body.innerHTML = `<p style="margin:0;font-size:15px">${msg}</p>
+            <div class="modal-confirm-actions">
+                <button id="confirm-no" class="btn-cancel">Cancel</button>
+                <button id="confirm-yes" class="btn-danger">Confirm</button>
             </div>`;
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-overlay').classList.add('active');
@@ -6416,7 +6268,6 @@ https://u2l.ai/MessManager
         const btn = document.querySelector('#page-' + page + ' .aam-footer .aam-save-btn')
             || document.querySelector('#page-' + page + ' .abazar-fab')
             || document.querySelector('#page-' + page + ' .anotice-fab')
-            || document.querySelector('#page-' + page + ' .amenu-fab');
         if (!btn) return;
         const pageEl = document.getElementById('page-' + page);
         const r = btn.getBoundingClientRect();
@@ -6443,8 +6294,12 @@ https://u2l.ai/MessManager
         // The same single gap that separates content, Add button and bottom
         // bar (--g-btm, 9px phones / 21px desktop) goes between button and toast.
         const g = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--g-btm')) || 9;
-        c.style.left = Math.round(r.left) + 'px';
-        c.style.right = Math.round(cw - r.right) + 'px';
+        // A compact Add pill is too narrow to align a toast to; keep the
+        // container's default insets and only lift the toast above the button.
+        if (r.width >= 220) {
+            c.style.left = Math.round(r.left) + 'px';
+            c.style.right = Math.round(cw - r.right) + 'px';
+        }
         c.style.bottom = Math.round(ch - r.top + g) + 'px';
     },
 

@@ -2425,11 +2425,9 @@ select.input-sm { cursor: pointer; }
     #app-screen .abazar-fab { left: calc(50% - 326px); right: calc(50% - 326px); border-radius: 14px; justify-content: center; padding: 14px; }
     #app-screen .aam-footer { left: calc(50% - 326px); right: calc(50% - 326px); background: transparent; padding: 6px 0; }
     #app-screen .anotice-fab { left: calc(50% - 326px); right: calc(50% - 326px); border-radius: 14px; justify-content: center; padding: 14px; }
-    #app-screen .amenu-fab { right: calc(50% - 326px + 16px); }
     #app-screen .abn-bottom { left: calc(50% - 326px); right: calc(50% - 326px); bottom: 12px; border-radius: 16px; border: 1px solid var(--border); }
     #app-screen .aam-body { padding-left: 0; padding-right: 0; }
     #app-screen .abn-body { padding-left: 24px; padding-right: 24px; }
-    #app-screen .amenu-body { padding-left: 24px; padding-right: 24px; }
 }
 
 /* ==================== PROFILE & SETTINGS ==================== */
@@ -2918,14 +2916,11 @@ img, canvas { max-width: 100%; }
 #app-screen.on-members .main-content { margin-top: 0; padding: 0 24px 72px; }
 #app-screen.on-bazarnote .topbar { display: none; }
 #app-screen.on-bazarnote .main-content { margin-top: 0; padding: 0; padding-bottom: 0; min-height: 100vh; display: flex; flex-direction: column; }
-#app-screen.on-menu .topbar { display: none; }
-#app-screen.on-menu .main-content { margin-top: 0; padding: 0; padding-bottom: 0; min-height: 100vh; display: flex; flex-direction: column; }
 #app-screen.on-monthly .topbar { display: none; }
 #app-screen.on-monthly .main-content { margin-top: 0; padding: 0; padding-bottom: 0; }
 #app-screen.on-bazarnote .bottom-nav,
-#app-screen.on-menu .bottom-nav,
 #app-screen.on-monthly .bottom-nav { display: none; }
-#page-bazarnote, #page-menu, #page-monthly { background: #f2f4f8; }
+#page-bazarnote, #page-monthly { background: #f2f4f8; }
 
 /* ==================== ANDROID COMPACT MATCH ==================== */
 /* Brand header */
@@ -3030,42 +3025,6 @@ img, canvas { max-width: 100%; }
 .abn-add-btn .material-icons-round { font-size: 28px; }
 .abn-go-bazar { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #FFB300; color: #1a1a1a; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; }
 
-/* ==================== MENU TODAY PAGE ==================== */
-.amenu-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 60px; margin: 0; }
-.amenu-head .icon-btn { color: #fff; min-width: 36px; min-height: 36px; }
-.amenu-head .icon-btn:hover { background: rgba(255,255,255,.15); }
-.amenu-head h2 { font-size: 18px; font-weight: 700; color: #fff; flex: 1; }
-.amenu-body { flex: 1; overflow-y: auto; padding: 16px 12px 80px; }
-.amenu-current { display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: #fff9e6; border: 1px solid #ffe082; border-radius: 14px; margin-bottom: 14px; }
-.amenu-current .material-icons-round { font-size: 28px; color: #333; margin-top: 2px; }
-.amenu-current strong { font-size: 17px; color: #1a1a1a; }
-.amenu-current small { font-size: 13px; color: #888; margin-left: 6px; }
-.amenu-current p { margin-top: 4px; font-size: 14px; color: #999; }
-.amenu-tabs { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
-.amenu-tab { display: flex; align-items: center; gap: 4px; padding: 8px 14px; border: 1px solid #ccc; border-radius: 20px; background: #fff; font-size: 13px; color: #555; cursor: pointer; white-space: nowrap; font-family: inherit; }
-.amenu-tab.active { background: #FFB300; border-color: #FFB300; color: #1a1a1a; font-weight: 600; }
-.amenu-tab .material-icons-round { font-size: 16px; }
-.amenu-day-card { background: #fff; border: 1px solid #eef1f6; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
-.amenu-day-card.today { border: 2px solid #FFB300; }
-.amenu-day-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.amenu-day-top strong { font-size: 16px; color: #1a1a1a; }
-.amenu-day-top span { font-size: 14px; color: #555; }
-.amenu-badge { background: #FFB300; color: #1a1a1a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
-.amenu-day-menu { font-size: 13px; color: #999; margin: 0; }
-.amenu-section { padding: 0; }
-.amenu-hint { font-size: 13px; color: #888; margin-bottom: 12px; }
-.amenu-empty { text-align: center; padding: 30px; color: #999; }
-.amenu-item-row { padding: 12px; background: #fff; border: 1px solid #eef1f6; border-radius: 10px; margin-bottom: 6px; font-size: 15px; color: #333; }
-.amenu-add-special { display: flex; align-items: center; gap: 4px; padding: 10px 14px; border: 1px dashed #ccc; border-radius: 10px; background: none; font-size: 14px; color: #555; cursor: pointer; width: 100%; font-family: inherit; }
-.amenu-add-special .material-icons-round { font-size: 18px; }
-.amenu-fab { position: fixed; bottom: calc(24px + var(--sab)); right: 16px; background: linear-gradient(135deg, #FFC130, #F39C00); color: #1a1a1a; border: none; border-radius: 14px; padding: 14px 22px; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(255,179,0,.4); font-family: inherit; z-index: 20; }
-.amenu-fab .material-icons-round { font-size: 22px; }
-.amenu-fab:hover { background: linear-gradient(135deg, #FFD05C, #FFB300); }
-.amenu-form-row { margin-bottom: 14px; }
-.amenu-form-row label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
-.amenu-form-row input { width: 100%; padding: 10px 12px; border: 1px solid #d0d8e4; border-radius: 8px; font-size: 15px; outline: none; box-sizing: border-box; }
-.amenu-form-row input:focus { border-color: var(--primary); }
-
 /* ==================== ANALYSIS PAGE ==================== */
 .am-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 56px; }
 .am-head .icon-btn { color: var(--primary); min-width: 40px; min-height: 40px; }
@@ -3148,7 +3107,7 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .abazar-flat-item,
 [data-theme="oled"] .abazar-item, [data-theme="oled"] .amealhist-card,
 [data-theme="oled"] .acosttrash-card, [data-theme="oled"] .adeptrash-card,
-[data-theme="oled"] .amenu-card, [data-theme="oled"] .aduty-card,
+[data-theme="oled"] .aduty-card,
 [data-theme="oled"] .aduty-banner, [data-theme="oled"] .am-card,
 [data-theme="oled"] .aprof-card, [data-theme="oled"] .am-add-card,
 [data-theme="oled"] .am-day-card, [data-theme="oled"] .adash-notice,
@@ -3404,10 +3363,6 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .aduty-card { background: #0d0d0d; border-color: #1a1a1a; }
 [data-theme="oled"] .aduty-member { background: #0d0d0d; border-color: #1a1a1a; }
 [data-theme="oled"] .aduty-banner { background: #0d0d0d; border-color: #1a1a1a; }
-/* Menu */
-[data-theme="oled"] .amenu-tab { background: #141414; border-color: #222; }
-[data-theme="oled"] .amenu-day-card { background: #0d0d0d; border-color: #1a1a1a; }
-[data-theme="oled"] .amenu-item-row { background: #0d0d0d; border-color: #1a1a1a; }
 [data-theme="oled"] .am-stat-card { background: #0d0d0d; border-color: #1a1a1a; }
 [data-theme="oled"] .am-card { background: #0d0d0d; border-color: #1a1a1a; }
 [data-theme="oled"] .am-tabs { background: #141414; border-color: #222; }
@@ -3503,7 +3458,7 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] #page-balance, [data-theme="oled"] #page-profile,
 [data-theme="oled"] #page-mealhistory, [data-theme="oled"] #page-costtrash,
 [data-theme="oled"] #page-deptrash, [data-theme="oled"] #page-addmeal,
-[data-theme="oled"] #page-bazarnote, [data-theme="oled"] #page-menu,
+[data-theme="oled"] #page-bazarnote,
 [data-theme="oled"] #page-monthly, [data-theme="oled"] #page-duty,
 [data-theme="oled"] #page-notices { background: #0a0a0a; }
 /* All cards, inputs, selects, buttons */
@@ -3515,7 +3470,7 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .adash-dinner-row,
 [data-theme="oled"] .aflat-card, [data-theme="oled"] .aflat-card-box,
 [data-theme="oled"] .aprof-card, [data-theme="oled"] .aprof-row,
-[data-theme="oled"] .amealhist-card, [data-theme="oled"] .amenu-current,
+[data-theme="oled"] .amealhist-card,
 [data-theme="oled"] .acosttrash-card, [data-theme="oled"] .adeptrash-card,
 [data-theme="oled"] input[type="text"], [data-theme="oled"] input[type="email"],
 [data-theme="oled"] input[type="password"], [data-theme="oled"] input[type="number"],
@@ -3562,7 +3517,6 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .aprof-head { color: #e8ebf1; }
 [data-theme="oled"] .aprof-head h2 { color: #e8ebf1; }
 [data-theme="oled"] .abn-head { color: #e8ebf1; }
-[data-theme="oled"] .amenu-head { color: #e8ebf1; }
 /* Tables */
 [data-theme="oled"] .ameal-table { background: #0d0d0d; }
 [data-theme="oled"] .ameal-table tbody td { background: #0d0d0d; color: #e8ebf1; border-color: #1a1a1a; }
@@ -3606,11 +3560,11 @@ img, canvas { max-width: 100%; }
 .aflat-card, .adash-mess-card { margin-left: 0; margin-right: 0; }
 
 /* Inner page bodies never add side gutters; the main column owns them. */
-.aam-body, .abn-body, .amenu-body, .am-body { padding-left: 0; padding-right: 0; }
+.aam-body, .abn-body, .am-body { padding-left: 0; padding-right: 0; }
 
 /* Wide screens: full-bleed pages join the 24px column system. */
 @media (min-width: 768px) {
-    #app-screen.on-bazarnote .main-content, #app-screen.on-menu .main-content, #app-screen.on-monthly .main-content { padding-left: 24px; padding-right: 24px; }
+    #app-screen.on-bazarnote .main-content, #app-screen.on-monthly .main-content { padding-left: 24px; padding-right: 24px; }
 }
 
 /* Phones: uniform 12px gutters on every page. */
@@ -3668,8 +3622,7 @@ img, canvas { max-width: 100%; }
 #app-screen.on-addmeal .main-content,
 #app-screen.on-addcost .main-content,
 #app-screen.on-adddeposit .main-content { padding-bottom: calc(var(--nav-top) + var(--g-btm) * 2 + var(--foot-h)) !important; }
-#app-screen.on-menu .main-content { padding-bottom: calc(24px + var(--sab) + var(--mfab-h) + var(--g-btm)) !important; }
-.aam-body, .abn-body, .amenu-body { padding-bottom: 0 !important; }
+.aam-body, .abn-body { padding-bottom: 0 !important; }
 
 /* Mess select list: leave/remove button */
 .mess-item-leave {
@@ -3687,3 +3640,159 @@ img, canvas { max-width: 100%; }
 }
 .mess-item-leave:active { background: rgba(229, 57, 53, 0.12); }
 .mess-item-leave .material-icons-round { font-size: 22px; }
+
+/* ==================== Warning / popup buttons · Meter Manager style ==================== */
+/* Compact, right-aligned text buttons (Cancel muted, destructive red, primary blue)
+   instead of the old full-width gradient bars. */
+.dialog-actions { gap: 6px; margin-top: 24px; justify-content: flex-end; }
+.dialog-actions .btn,
+.dialog-actions .btn.secondary {
+    flex: none; min-width: auto; padding: 8px 16px;
+    background: none; background-image: none; border: 0; border-radius: 8px;
+    color: var(--text-secondary, #5b6472);
+    font-size: 14px; font-weight: 500; letter-spacing: .2px;
+}
+.dialog-actions .btn.secondary:hover { background: rgba(127,127,127,.10); background-image: none; color: var(--text-secondary, #5b6472); }
+.dialog-actions .btn:active,
+.dialog-actions .btn.secondary:active { background: rgba(127,127,127,.16); }
+.dialog-actions .btn.danger,
+.dialog-actions .btn.danger-action {
+    color: var(--danger); font-weight: 600; background: none; background-image: none;
+}
+.dialog-actions .btn.danger:hover,
+.dialog-actions .btn.danger-action:hover { background: rgba(211,47,47,.10); background-image: none; color: var(--danger); }
+.dialog-actions .btn.danger:active,
+.dialog-actions .btn.danger-action:active { background: rgba(211,47,47,.16); }
+/* Forced update keeps its single blue Update button. */
+.dialog-actions .btn.primary,
+.dialog-actions .btn.primary-action {
+    color: #fff; background: #2563eb; background-image: none; font-weight: 600; padding: 10px 20px;
+}
+.dialog-actions .btn.primary:hover,
+.dialog-actions .btn.primary-action:hover { background: #1d4ed8; background-image: none; }
+.dialog-actions .btn.primary:active,
+.dialog-actions .btn.primary-action:active { background: #1e40af; background-image: none; }
+
+/* Confirm warnings (Leave mess, Sign out, Reset password) */
+.modal-confirm-actions { gap: 6px; margin-top: 24px; justify-content: flex-end; }
+.modal-confirm-actions .btn-cancel,
+.modal-confirm-actions .btn-danger,
+.modal-confirm-actions .btn-primary-action {
+    flex: none; min-width: auto; padding: 8px 16px;
+    background: none; background-image: none; border: 0; border-radius: 8px;
+    box-shadow: none; font-size: 14px; font-weight: 500; color: var(--text-secondary, #5b6472);
+}
+.modal-confirm-actions .btn-danger { color: var(--danger); font-weight: 600; box-shadow: none; }
+.modal-confirm-actions .btn-primary-action { color: #2563eb; font-weight: 600; }
+.modal-confirm-actions .btn-cancel:hover { background: rgba(127,127,127,.10); background-image: none; color: var(--text-secondary, #5b6472); }
+.modal-confirm-actions .btn-danger:hover { background: rgba(211,47,47,.10); background-image: none; color: var(--danger); box-shadow: none; }
+.modal-confirm-actions .btn-primary-action:hover { background: rgba(37,99,235,.10); background-image: none; color: #2563eb; box-shadow: none; }
+.modal-confirm-actions .btn-cancel:hover { box-shadow: none; }
+.modal-confirm-actions .btn-cancel:active { background: rgba(127,127,127,.16); box-shadow: none; }
+.modal-confirm-actions .btn-danger:active { background: rgba(211,47,47,.16); box-shadow: none; }
+.modal-confirm-actions .btn-primary-action:active { background: rgba(37,99,235,.16); box-shadow: none; }
+#confirm-yes:hover { background: rgba(211,47,47,.10) !important; }
+#confirm-no:hover { background: rgba(127,127,127,.10) !important; }
+
+/* Form-modal footers (Add/Edit Deposit, Expense, Meal …) */
+.dep-footer-btns { gap: 6px; justify-content: flex-end; }
+.dep-footer-btns .btn-modal-add,
+.dep-footer-btns .btn-modal-cancel { flex: none; }
+.btn-modal-add,
+.btn-modal-cancel {
+    flex: none; min-width: auto; min-height: 0; padding: 8px 16px;
+    background: none; background-image: none; border: 0; border-radius: 8px;
+    box-shadow: none; font-size: 14px; letter-spacing: .2px;
+    font-weight: 500; color: var(--text-secondary, #5b6472);
+}
+.btn-modal-add { color: #2563eb; font-weight: 600; }
+.btn-modal-add:hover { background: rgba(37,99,235,.10); background-image: none; color: #2563eb; box-shadow: none; }
+.btn-modal-cancel:hover { background: rgba(127,127,127,.10); background-image: none; color: var(--text-secondary, #5b6472); }
+.btn-modal-add:active { background: rgba(37,99,235,.16); }
+.btn-modal-cancel:active { background: rgba(127,127,127,.16); }
+
+/* Toast: compact centered pill at the bottom (Meter Manager style) */
+#toast-container { align-items: center; }
+.toast {
+    width: auto; max-width: 88vw; padding: 12px 18px;
+    border-radius: 12px; font-size: 13.5px; font-weight: 600;
+}
+.toast.toast-perm { width: 100%; }
+
+/* ==================== Add button · floating pill ==================== */
+/* Compact right-aligned pill above the bottom bar (was a full-width bar). */
+.abazar-fab {
+    left: auto; right: 16px;
+    padding: 12px 20px; border-radius: 999px; justify-content: flex-start;
+    font-size: 15px; font-weight: 700; letter-spacing: .2px;
+    background: linear-gradient(135deg, #E53935, #C62828);
+    box-shadow: 0 6px 18px rgba(198,40,40,.32), 0 2px 6px rgba(0,0,0,.28);
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.abazar-fab .material-icons-round { font-size: 20px; }
+.abazar-fab:hover {
+    background: linear-gradient(135deg, #EF5350, #D32F2F);
+    box-shadow: 0 8px 22px rgba(198,40,40,.42), 0 2px 6px rgba(0,0,0,.28);
+}
+.abazar-fab:active { transform: scale(.96); box-shadow: 0 3px 10px rgba(198,40,40,.3); }
+@media (max-width: 767px) {
+    .abazar-fab { left: auto; right: 16px; padding: 12px 20px; border-radius: 999px; justify-content: flex-start; }
+}
+@media (min-width: 768px) {
+    #app-screen .abazar-fab { left: auto; right: calc(50% - 326px + 16px); padding: 12px 22px; border-radius: 999px; justify-content: flex-start; }
+}
+
+/* Same floating pill for the Notice "Pin a notice" add button. */
+.anotice-fab {
+    left: auto; right: 16px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 12px 20px; border-radius: 999px; justify-content: flex-start;
+    font-size: 15px; font-weight: 700; letter-spacing: .2px;
+    border: none; font-family: inherit; cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.anotice-fab .material-icons-round { font-size: 20px; }
+.anotice-fab {
+    background: linear-gradient(135deg, #E53935, #C62828); color: #fff;
+    box-shadow: 0 6px 18px rgba(198,40,40,.32), 0 2px 6px rgba(0,0,0,.28);
+}
+.anotice-fab:hover {
+    background: linear-gradient(135deg, #EF5350, #D32F2F);
+    box-shadow: 0 8px 22px rgba(198,40,40,.42), 0 2px 6px rgba(0,0,0,.28);
+}
+.anotice-fab:active { transform: scale(.96); }
+@media (max-width: 767px) {
+    .anotice-fab { left: auto; right: 16px; padding: 12px 20px; border-radius: 999px; justify-content: flex-start; font-size: 15px; }
+}
+@media (max-width: 360px) {
+    .anotice-fab { padding: 12px 18px; font-size: 14px; }
+}
+@media (min-width: 768px) {
+    #app-screen .anotice-fab { left: auto; right: calc(50% - 326px + 16px); border-radius: 999px; padding: 12px 22px; justify-content: flex-start; }
+}
+
+/* Add Expense / Meal / Deposit pages: same floating pill for the Add/Save submit. */
+.aam-footer {
+    background: transparent; padding: 0 16px;
+    display: flex; justify-content: flex-end;
+}
+.aam-footer .aam-save-btn,
+#app-screen .aam-footer .aam-save-btn {
+    width: auto; min-width: 0;
+    padding: 12px 20px; border-radius: 999px;
+    font-size: 15px; font-weight: 700; letter-spacing: .2px;
+    background: linear-gradient(135deg, #E53935, #C62828);
+    box-shadow: 0 6px 18px rgba(198,40,40,.32), 0 2px 6px rgba(0,0,0,.28);
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+#app-screen .aam-footer .aam-save-btn:hover {
+    background: linear-gradient(135deg, #EF5350, #D32F2F);
+    box-shadow: 0 8px 22px rgba(198,40,40,.42), 0 2px 6px rgba(0,0,0,.28);
+}
+#app-screen .aam-footer .aam-save-btn:active { transform: scale(.96); }
+@media (max-width: 767px) {
+    #app-screen .aam-footer { left: 0; right: 0; padding: 0 16px; background: transparent; }
+}
+@media (min-width: 768px) {
+    #app-screen .aam-footer { left: calc(50% - 326px); right: calc(50% - 326px); padding: 0 16px; background: transparent; }
+}
