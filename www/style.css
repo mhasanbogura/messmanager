@@ -3796,3 +3796,51 @@ img, canvas { max-width: 100%; }
 @media (min-width: 768px) {
     #app-screen .aam-footer { left: calc(50% - 326px); right: calc(50% - 326px); padding: 0 16px; background: transparent; }
 }
+
+/* Add pill on Add Meal / Expense / Deposit / Bazar: a size up and lifted a
+   little higher off the bottom nav, so it reads as the primary action. */
+.aam-footer .aam-save-btn,
+#app-screen .aam-footer .aam-save-btn {
+    padding: 16px 28px; min-height: 54px; font-size: 17px;
+    box-shadow: 0 8px 22px rgba(198,40,40,.36), 0 2px 8px rgba(0,0,0,.30);
+}
+#app-screen .aam-footer .aam-save-btn:hover {
+    box-shadow: 0 10px 26px rgba(198,40,40,.45), 0 2px 8px rgba(0,0,0,.30);
+}
+/* Keep the other add pills (Bazar, Notice) the same size and height. */
+#app-screen .abazar-fab,
+#app-screen .anotice-fab {
+    padding: 16px 28px; min-height: 54px; font-size: 17px;
+    box-shadow: 0 8px 22px rgba(198,40,40,.36), 0 2px 8px rgba(0,0,0,.30);
+}
+#app-screen .abazar-fab .material-icons-round,
+#app-screen .anotice-fab .material-icons-round { font-size: 22px; }
+/* Mess page "ADD": same pill as the floating Add buttons, and the row can
+   never push it off the right edge (the input's intrinsic width used to win). */
+.aflat-add-row { gap: 10px; }
+.aflat-input-wrap { min-width: 0; min-height: 54px; }
+.aflat-input-wrap input { min-width: 0; }
+.aflat-add-btn {
+    flex: 0 0 auto; white-space: nowrap;
+    padding: 16px 28px; min-height: 54px; border-radius: 999px;
+    font-size: 17px; letter-spacing: .2px;
+}
+/* Every floating "Add" pill: identical content layout (icon + label) and a
+   drag handle. Position is handled by App._initAddPillDrag() once dragged. */
+.aam-footer .aam-save-btn,
+#app-screen .aam-footer .aam-save-btn {
+    display: flex; align-items: center; gap: 6px;
+}
+.aam-footer .aam-save-btn .material-icons-round { font-size: 22px; }
+.aam-footer .aam-save-btn,
+.abazar-fab,
+.anotice-fab {
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    cursor: grab;
+}
+.add-pill-dragging {
+    transform: scale(1.05) !important;
+    opacity: .92;
+    transition: none !important;
+    cursor: grabbing;
+}

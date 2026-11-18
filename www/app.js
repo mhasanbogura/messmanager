@@ -202,7 +202,7 @@ const App = {
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
-        prof_version:'Version 1.6.14 (build 777)',
+        prof_version:'Version 1.6.15 (build 780)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -375,7 +375,7 @@ const App = {
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
-            prof_version:'ভার্সন 1.6.14 (বিল্ড 777)',
+            prof_version:'ভার্সন 1.6.15 (বিল্ড 780)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -428,6 +428,7 @@ const App = {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (this.theme === 'system') this.applyTheme(); });
         this.applyLanguage();
         this._applyPlatformRows();
+        this._initAddPillDrag();
         this._measureBottomBar();
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this._measureBottomBar()).catch(() => {});
         if (!navigator.onLine) {
@@ -5117,6 +5118,93 @@ https://u2l.ai/MessManager
             if (!native) updateRow.onclick = () => { window.location.href = 'https://u2l.ai/MessManager'; };
         }
     },
+    // Floating "Add" pills (Meal / Expense / Deposit / Bazar / Notice) share one
+    // draggable position: drag any of them and every page keeps it there.
+    _addPillSel: '.aam-footer .aam-save-btn, .abazar-fab, .anotice-fab',
+    _addPillStoreKey: 'mess_add_pill_pos',
+    _addPillSaved() {
+        try {
+            const p = JSON.parse(localStorage.getItem(this._addPillStoreKey) || 'null');
+            if (p && typeof p.right === 'number' && typeof p.bottom === 'number') return p;
+        } catch (e) {}
+        return null;
+    },
+    _applyAddPillPos(p) {
+        if (!p) return;
+        const vw = document.documentElement.clientWidth || window.innerWidth;
+        const vh = document.documentElement.clientHeight || window.innerHeight;
+        document.querySelectorAll(this._addPillSel).forEach(btn => {
+            const w = btn.offsetWidth || 118, h = btn.offsetHeight || 54;
+            const right = Math.min(Math.max(8, p.right), Math.max(8, vw - w - 8));
+            const bottom = Math.min(Math.max(8, p.bottom), Math.max(8, vh - h - 8));
+            btn.style.position = 'fixed';
+            btn.style.left = 'auto';
+            btn.style.top = 'auto';
+            btn.style.right = right + 'px';
+            btn.style.bottom = bottom + 'px';
+            btn.style.margin = '0';
+        });
+    },
+    _initAddPillDrag() {
+        const saved = this._addPillSaved();
+        if (saved) this._applyAddPillPos(saved);
+        window.addEventListener('resize', () => {
+            const p = this._addPillSaved();
+            if (p) this._applyAddPillPos(p);
+        });
+        document.querySelectorAll(this._addPillSel).forEach(btn => {
+            if (btn.dataset.addPillDrag) return;
+            btn.dataset.addPillDrag = '1';
+            let startX = 0, startY = 0, baseLeft = 0, baseTop = 0, active = false, moved = false;
+            btn.addEventListener('pointerdown', e => {
+                if (e.button) return;
+                const r = btn.getBoundingClientRect();
+                startX = e.clientX; startY = e.clientY;
+                baseLeft = r.left; baseTop = r.top;
+                active = true; moved = false;
+                try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+            btn.addEventListener('pointermove', e => {
+                if (!active) return;
+                const dx = e.clientX - startX, dy = e.clientY - startY;
+                if (!moved) {
+                    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+                    moved = true;
+                    btn.classList.add('add-pill-dragging');
+                }
+                const vw = document.documentElement.clientWidth || window.innerWidth;
+                const vh = document.documentElement.clientHeight || window.innerHeight;
+                const w = btn.offsetWidth, h = btn.offsetHeight;
+                btn.style.position = 'fixed';
+                btn.style.right = 'auto'; btn.style.bottom = 'auto'; btn.style.margin = '0';
+                btn.style.left = Math.min(Math.max(8, baseLeft + dx), Math.max(8, vw - w - 8)) + 'px';
+                btn.style.top = Math.min(Math.max(8, baseTop + dy), Math.max(8, vh - h - 8)) + 'px';
+                e.preventDefault();
+            });
+            const finish = e => {
+                if (!active) return;
+                active = false;
+                try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
+                btn.classList.remove('add-pill-dragging');
+                if (!moved) return;
+                const r = btn.getBoundingClientRect();
+                const vw = document.documentElement.clientWidth || window.innerWidth;
+                const vh = document.documentElement.clientHeight || window.innerHeight;
+                const pos = { right: Math.max(8, Math.round(vw - r.right)), bottom: Math.max(8, Math.round(vh - r.bottom)) };
+                try { localStorage.setItem(this._addPillStoreKey, JSON.stringify(pos)); } catch (err) {}
+                this._applyAddPillPos(pos);
+                // A drag must not fire the button's own action.
+                const swallow = ev => {
+                    if (ev.target === btn || btn.contains(ev.target)) { ev.preventDefault(); ev.stopPropagation(); }
+                };
+                document.addEventListener('click', swallow, true);
+                setTimeout(() => document.removeEventListener('click', swallow, true), 400);
+            };
+            btn.addEventListener('pointerup', finish);
+            btn.addEventListener('pointercancel', finish);
+        });
+    },
+
     _driveFiles: {
         about: { url: 'https://www.googleapis.com/drive/v3/files/1s45exjbMZhDk-Yt7oHSYjO6P_FiPs3YY?alt=media&key=AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8', key: 'cache_about_md' },
         contact: { url: 'https://www.googleapis.com/drive/v3/files/1VNmXxG33NWMphp1mz2xQGWcm9NdCc3oH?alt=media&key=AIzaSyAX7T6Vd75LnhQg15IydOLEYqjfGUT8TO8', key: 'cache_contact_md' }
