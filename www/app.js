@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.22 (build 799)',
+        prof_version:'Version 1.6.23 (build 802)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.22 (বিল্ড 799)',
+            prof_version:'ভার্সন 1.6.23 (বিল্ড 802)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -2299,8 +2299,8 @@ const App = {
             if (!mids.length) { div.innerHTML = '<p class="empty-state" style="padding:20px;text-align:center;color:#999">No peoples to set permissions for</p>'; return; }
             const pSnap = await db.ref(`messes/${this.messId}/permissions`).once('value');
             const perms = pSnap.val() || {};
-            const permKeys = ['bazarEntry', 'moneyManage', 'mealEntry', 'togglePerms', 'manage', 'elecManage'];
-            const permLabels = ['Manage Expenses', 'Manage Money', 'Manage Meals', 'Manage Permissions', 'Manage People & Members', 'Manage Electricity'];
+            const permKeys = ['bazarEntry', 'moneyManage', 'mealEntry', 'togglePerms', 'manage'];
+            const permLabels = ['Manage Expenses', 'Manage Money', 'Manage Meals', 'Manage Permissions', 'Manage People & Members'];
             const colors = ['#E53935','#1565C0','#2E7D32','#FF9800','#7B1FA2','#00838F'];
             const iAmAdmin = this.userRole === 'admin';
             const iCanToggle = iAmAdmin || this.canDo('togglePerms');
@@ -2317,9 +2317,10 @@ const App = {
                 let checks = '';
                 for (let j = 0; j < permKeys.length; j++) {
                     const k = permKeys[j];
-                    // Manage Expenses defaults to on; 'Manage Meals' covers mealEntry + legacy mealEdit.
+                    // Manage Expenses defaults to on; 'Manage Meals' covers mealEntry + legacy mealEdit;
+                    // 'Manage Permissions' covers togglePerms + elecManage.
                     const checked = k === 'bazarEntry' ? userPerms.bazarEntry !== false
-                        : (!!userPerms[k] || (k === 'mealEntry' && !!userPerms['mealEdit']));
+                        : (!!userPerms[k] || (k === 'mealEntry' && !!userPerms['mealEdit']) || (k === 'togglePerms' && !!userPerms['elecManage']));
                     const canClick = iCanToggle && !isAdmin && !isMe;
                     checks += `<div class="aflat-perm-row">
                         <div class="aflat-perm-check ${checked ? 'checked' : ''}" onclick="App.togglePerm('${id}','${k}',this)" ${!canClick ? 'style="pointer-events:none;opacity:.5"' : ''}>
@@ -2350,6 +2351,8 @@ const App = {
             updates[`messes/${this.messId}/permissions/${uid}/${key}`] = isChecked;
             // 'Manage Meals' is one row backed by two stored keys (mealEntry + mealEdit).
             if (key === 'mealEntry') updates[`messes/${this.messId}/permissions/${uid}/mealEdit`] = isChecked;
+            // 'Manage Permissions' is one row backed by two stored keys (togglePerms + elecManage).
+            if (key === 'togglePerms') updates[`messes/${this.messId}/permissions/${uid}/elecManage`] = isChecked;
             await db.ref().update(updates);
         } catch (e) { this.toast(this.errText(e), 'error'); }
     },
@@ -2402,6 +2405,8 @@ const App = {
         if (key === 'bazarEntry') return this._userPerms.bazarEntry !== false;
         // 'Manage Meals' is stored as mealEntry (+ legacy mealEdit).
         if (key === 'mealEntry') return !!(this._userPerms.mealEntry || this._userPerms.mealEdit);
+        // 'Manage Permissions' also covers Manage Electricity (one combined row).
+        if (key === 'elecManage') return !!(this._userPerms.elecManage || this._userPerms.togglePerms);
         return !!this._userPerms[key];
     },
     /* One message for every refused write: Firebase answers a rule block with
