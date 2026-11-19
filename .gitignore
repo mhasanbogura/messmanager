@@ -11,5 +11,6 @@ _merge/
 # Local build outputs / test files (not part of the repo)
 app-debug.apk
 icon-test.html
+members-screenshot*.png
 android/app/src/main/assets/public/
 android/app/src/main/assets/fonts/
