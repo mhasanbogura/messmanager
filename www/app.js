@@ -96,6 +96,7 @@ const App = {
         dash_notice_preview:'Pin a notice for the whole house',dash_today:'Today is',dash_breakfast:'Breakfast',dash_lunch:'Lunch',dash_dinner:'Dinner',
         dash_meal:'Meal',dash_deposit:'Deposit',dash_balance:'Balance',dash_expense_per_meal:'Expense per Meal',
         dash_utility:'Utility',dash_expense_per_utility:'Expense per utility',dash_analyse:'Analyze',
+        dash_electricity:'Electricity',dash_view_details:'View Details',
         dash_meal_summary:'Meal Summary',dash_util_others:'Rent, Utilities & Others',
         dash_table_name:'Name',dash_table_total:'Total',dash_table_expense:'Expense (৳)',dash_table_deposit:'Deposit (৳)',dash_table_balance:'Balance (৳)',
         dash_table_rent:'Rent (৳)',dash_table_cook:'Cook (৳)',dash_table_util_others:'Utilities (৳)',
@@ -202,7 +203,8 @@ const App = {
         prof_language:'Language',prof_lang_desc:'Choose your preferred language',
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
-        prof_version:'Version 1.6.15 (build 780)',
+        prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
+        prof_version:'Version 1.6.17 (build 784)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -258,6 +260,7 @@ const App = {
             const text = this._translations[key];
             if (text) el.placeholder = lang === 'bn' ? this._bnText(key) : text;
         });
+        if (this._elecCfg) { try { this.applyElectricityCard(); } catch (e) {} }
     },
 
     _bnText(key) {
@@ -270,6 +273,7 @@ const App = {
             dash_notice_preview:'পুরো বাড়ির জন্য একটি নোটিশ দিন',dash_today:'আজ',dash_breakfast:'সকালের নাস্তা',dash_lunch:'দুপুরের খাবার',dash_dinner:'রাতের খাবার',
             dash_meal:'খাবার',dash_deposit:'জমা',dash_balance:'ব্যালেন্স',dash_expense_per_meal:'প্রতি খাবারে খরচ',
             dash_utility:'ইউটিলিটি',dash_expense_per_utility:'প্রতি ইউটিলিটিতে খরচ',dash_analyse:'বিশ্লেষণ',
+            dash_electricity:'বিদ্যুৎ',dash_view_details:'বিস্তারিত দেখুন',
             dash_meal_summary:'খাবার সারসংক্ষেপ',dash_util_others:'ভাড়া, ইউটিলিটি ও অন্যান্য',
             dash_table_name:'নাম',dash_table_total:'মোট',dash_table_expense:'খরচ (৳)',dash_table_deposit:'জমা (৳)',dash_table_balance:'ব্যালেন্স (৳)',
             dash_table_rent:'ভাড়া (৳)',dash_table_cook:'রাঁধুনি (৳)',dash_table_util_others:'ইউটিলিটি (৳)',dash_no_data:'কোনো তথ্য নেই',
@@ -375,7 +379,8 @@ const App = {
             prof_language:'ভাষা',prof_lang_desc:'আপনার পছন্দের ভাষা নির্বাচন করুন',
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
-            prof_version:'ভার্সন 1.6.15 (বিল্ড 780)',
+            prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
+            prof_version:'ভার্সন 1.6.17 (বিল্ড 784)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -1636,6 +1641,7 @@ const App = {
             if (this._pageHistory.length < 30) this._pageHistory.push(this.currentPage);
         }
         this.currentPage = page;
+        if (page !== 'electricity') this._elecDetailsOpen = false;
         try { localStorage.setItem('mess_currentPage', page); } catch (e) {}
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const pg = document.getElementById('page-' + page);
@@ -1649,6 +1655,7 @@ const App = {
         document.getElementById('app-screen').classList.toggle('on-members', page === 'members');
         document.getElementById('app-screen').classList.toggle('on-bazarnote', page === 'bazarnote');
         document.getElementById('app-screen').classList.toggle('on-monthly', page === 'monthly');
+        document.getElementById('app-screen').classList.toggle('on-electricity', page === 'electricity');
         const titles = { dashboard: this.t('nav_dashboard'), members: this.t('mm_title'), meals: this.t('me_title'), bazaar: this.t('el_title'), balance: this.t('mm2_title'), notices: this.t('nb_title'), monthly: this.t('an_title'), profile: this.t('prof_title'), duty: this.t('dt_title'), bazarnote: this.t('bn_title'), mealhistory: this.t('mr_title'), costtrash: this.t('de_title'), deptrash: this.t('dt2_title') };
         const hideTopbar = [];
         document.getElementById('page-title').textContent = titles[page] || page.charAt(0).toUpperCase() + page.slice(1);
@@ -1677,6 +1684,7 @@ const App = {
         document.getElementById('app-screen').classList.toggle('on-costtrash', page === 'costtrash');
         document.getElementById('app-screen').classList.toggle('on-deptrash', page === 'deptrash');
         document.getElementById('app-screen').classList.toggle('on-meals', page === 'meals');
+        if (page === 'profile') this.updateVersionLabel();
         if (page === 'dashboard') this.loadDashboard();
         if (page === 'notices') this.loadNotices();
         if (page === 'duty') this.loadDuty();
@@ -2534,6 +2542,7 @@ https://u2l.ai/MessManager
             }, 5000);
 
             document.getElementById('dash-mess-name').textContent = this.messName || 'My Mess';
+            this.loadElectricity();
 
             const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -4822,6 +4831,7 @@ https://u2l.ai/MessManager
         }
         
         setTimeout(() => this._applyPlatformRows(), 200); // Small delay to ensure DOM is ready
+        this.loadElectricity();
         if (!this.currentUser) return;
         const u = this.currentUser;
         document.getElementById('prof-name').textContent = u.displayName || 'User';
@@ -5119,6 +5129,798 @@ https://u2l.ai/MessManager
             // its markup handler (App.checkUpdate) untouched.
             if (!native) updateRow.onclick = () => { window.location.href = 'https://u2l.ai/MessManager'; };
         }
+    },
+    /* ---------- Electricity card · DESCO / NESCO ---------- */
+    _elecCfg: null,
+    _elecDefault() {
+        return { enabled: false, provider: 'desco', number: '', user: '', password: '', balance: null, updatedAt: null, lowThreshold: 200, userEnabled: false };
+    },
+    async loadElectricity() {
+        if (!this.messId) return this._elecDefault();
+        let saved = null;
+        try {
+            const settings = await this._dbGet(`messes/${this.messId}/settings`, 'settings');
+            saved = settings && settings.electricity ? settings.electricity : null;
+        } catch (e) { /* offline */ }
+        if (saved && !localStorage.getItem('elecCardOffDefault') && saved.userEnabled !== true) {
+            try { localStorage.setItem('elecCardOffDefault', '1'); } catch (e) {}
+            saved.enabled = false;
+            saved.userEnabled = false;
+            try { await db.ref(`messes/${this.messId}/settings/electricity`).update({ enabled: false, userEnabled: false }); } catch (e) {}
+        }
+        this._elecCfg = Object.assign(this._elecDefault(), saved || {});
+        this.applyElectricityCard();
+        this._maybeSyncElectricity();
+        return this._elecCfg;
+    },
+    applyElectricityCard() {
+        const cfg = this._elecCfg || this._elecDefault();
+        const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
+        const card = document.getElementById('dash-elec-card');
+        if (card) {
+            card.style.display = cfg.enabled === false ? 'none' : '';
+            const prov = document.getElementById('dash-elec-provider');
+            if (prov) prov.textContent = cfg.provider === 'nesco' ? 'NESCO' : 'DESCO';
+            const num = document.getElementById('dash-elec-number');
+            if (num) num.textContent = cfg.number ? this._toEnDigits(cfg.number) : (bn ? 'যুক্ত করুন' : 'Add meter');
+            const bal = document.getElementById('dash-elec-balance');
+            if (bal) {
+                bal.textContent = cfg.balance === null || cfg.balance === undefined || cfg.balance === '' ? '৳ —' : '৳ ' + this.fmtNum(cfg.balance);
+                const low = cfg.balance !== null && cfg.balance !== undefined && cfg.balance !== '' && Number(cfg.balance) < Number(cfg.lowThreshold || 200);
+                bal.classList.toggle('low', low);
+            }
+        }
+        const chk = document.getElementById('prof-elec-card');
+        if (chk) chk.checked = cfg.enabled !== false;
+    },
+    async showElectricityDetails(skipSync) {
+        const cfg = this._elecCfg || await this.loadElectricity();
+        if (!cfg || !cfg.number) { this.manageElectricity(); return; }
+        this._elecDetailsOpen = true;
+        if (!this._elecUsageTab) this._elecUsageTab = cfg.provider === 'nesco' ? 'monthly' : 'daily';
+        if (!this._elecUsageMetric) this._elecUsageMetric = 'taka';
+        const info = cfg.info || {};
+        const daily = Array.isArray(cfg.daily) ? cfg.daily : [];
+        const monthly = Array.isArray(cfg.monthly) ? cfg.monthly : [];
+        const history = Array.isArray(cfg.history) ? cfg.history : [];
+        const prov = cfg.provider === 'nesco' ? 'NESCO' : 'DESCO';
+
+        const rows = [];
+        const add = (label, value) => { if (value) rows.push(`<tr><td>${label}</td><td>${this.esc(value)}</td></tr>`); };
+        if (cfg.provider === 'nesco') {
+            add('Name', info.name);
+            add('Address', info.address);
+            add('Mobile', info.mobile);
+            add('Office', info.office);
+            add('Meter', info.meter);
+            add('Sanctioned load', info.load);
+            add('Tariff', info.tariff);
+            add('Meter type', info.meterType);
+            add('Status', info.status);
+            add('Install date', info.installDate);
+            add('Minimum recharge', info.minRecharge);
+        } else {
+            add('Name', info.name);
+            add('Account', info.account || cfg.number);
+            add('Meter', info.meter);
+            add('Route', info.route);
+            add('Sanctioned load', info.load);
+            add('Tariff', info.tariff);
+            add('Phase', info.phase);
+            add('Status', info.status);
+        }
+
+        let avg = null;
+        if (cfg.provider === 'desco' && daily.length) {
+            const last = daily.slice(-7).map(d => Number(d.taka) || 0);
+            if (last.length) avg = Math.round(last.reduce((s, v) => s + v, 0) / Math.min(7, last.length));
+        }
+
+        const now = new Date();
+        const thisKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastKey = lm.getFullYear() + '-' + String(lm.getMonth() + 1).padStart(2, '0');
+        const sumDays = key => {
+            const days = daily.filter(d => String(d.date || '').slice(0, 7) === key);
+            if (!days.length) return null;
+            return {
+                taka: days.reduce((s, d) => s + (Number(d.taka) || 0), 0),
+                kwh: days.reduce((s, d) => s + (Number(d.kwh) || 0), 0)
+            };
+        };
+        const monthRow = key => {
+            const m = monthly.find(x => String(x.month || '').slice(0, 7) === key);
+            return m ? { taka: Number(m.taka) || 0, kwh: Number(m.kwh) || 0 } : null;
+        };
+        const dThis = sumDays(thisKey);
+        const thisTot = (dThis && (dThis.taka || dThis.kwh)) ? dThis : (monthRow(thisKey) || dThis);
+        const lastTot = monthRow(lastKey) || sumDays(lastKey);
+
+        const totalUseHtml = (thisTot || lastTot) ? `
+            <section class="ed-card">
+                <h3 class="ed-center">Total use</h3>
+                <table class="ed-list"><tbody>
+                    <tr><td>This month</td><td class="ed-right-num"><strong>৳${this._money(thisTot ? thisTot.taka : 0)}</strong></td><td class="ed-right-num">${this._units(thisTot ? thisTot.kwh : 0)}</td></tr>
+                    <tr><td>Last month</td><td class="ed-right-num"><strong>৳${this._money(lastTot ? lastTot.taka : 0)}</strong></td><td class="ed-right-num">${this._units(lastTot ? lastTot.kwh : 0)}</td></tr>
+                </tbody></table>
+            </section>` : '';
+
+        let tab = this._elecUsageTab;
+        const hasDaily = daily.some(d => Number(d.kwh) || Number(d.taka));
+        const hasMonthly = monthly.some(m => Number(m.kwh) || Number(m.taka));
+        if (tab === 'daily' && !hasDaily && hasMonthly) tab = 'monthly';
+        if (tab === 'monthly' && !hasMonthly && hasDaily) tab = 'daily';
+        const metric = this._elecUsageMetric;
+        const usageHtml = (hasDaily || hasMonthly) ? `
+            <section class="ed-card">
+                <div class="ed-usage-head">
+                    <h3 class="ed-left">Usage</h3>
+                    <div class="ed-tabs">
+                        <button type="button" class="ed-tab${tab === 'daily' ? ' active' : ''}" onclick="App.elecUsageTab('daily')">Daily</button>
+                        <button type="button" class="ed-tab${tab === 'monthly' ? ' active' : ''}" onclick="App.elecUsageTab('monthly')">Monthly</button>
+                    </div>
+                </div>
+                <div class="ed-tabs ed-metric">
+                    <button type="button" class="ed-tab${metric === 'unit' ? ' active' : ''}" onclick="App.elecUsageMetric('unit')">Energy (kWh)</button>
+                    <button type="button" class="ed-tab${metric === 'taka' ? ' active' : ''}" onclick="App.elecUsageMetric('taka')">Cost (Tk)</button>
+                </div>
+                <div class="ed-chart-wrap"><canvas id="chElecUsage"></canvas><div class="chart-tip" id="elecUsageTip" hidden></div></div>
+                <div class="ed-legend" id="elecUsageLegend"></div>
+            </section>` : '';
+
+        let historyHtml = '';
+        if (history.length) {
+            if (cfg.provider === 'nesco') {
+                historyHtml = `
+                <section class="ed-card">
+                    <h3 class="ed-center">Recharge history</h3>
+                    <div class="ed-tbl-scroll"><table class="ed-hist">
+                        <thead><tr><th>Date</th><th>Total</th><th>Method</th></tr></thead>
+                        <tbody>${history.slice(0, 60).map(r => `<tr><td>${this.esc(this._histDate(r.date))}</td><td><strong>৳${this._money(r.amount)}</strong></td><td>${this.esc(r.method || '—')}</td></tr>`).join('')}</tbody>
+                    </table></div>
+                </section>`;
+            } else {
+                historyHtml = `
+                <section class="ed-card">
+                    <h3 class="ed-center">Recharge history</h3>
+                    <div class="ed-tbl-scroll"><table class="ed-hist">
+                        <thead><tr><th>Date</th><th>Token</th><th>Total</th><th>Amount</th><th>(kWh)</th><th>Rent</th><th>Charge</th><th>VAT</th><th>Rebate</th><th>Status</th></tr></thead>
+                        <tbody>${history.slice(0, 60).map(r => `<tr>
+                            <td>${this.esc(this._histDate(r.date))}</td>
+                            <td class="ed-token">${this.esc(r.token || '—')}</td>
+                            <td><strong>৳${this._money(r.total)}</strong></td>
+                            <td>৳${this._money(r.amount)}</td>
+                            <td>${this._units(Number(r.kwh) || this._descoKwh(r.amount))}</td>
+                            <td>৳${this._money(r.rent)}</td>
+                            <td>৳${this._money(r.charge)}</td>
+                            <td>৳${this._money(r.vat)}</td>
+                            <td>৳${this._money(r.rebate)}</td>
+                            <td class="${/success/i.test(String(r.status || '')) ? 'ed-ok' : ''}">${this.esc(r.status || '—')}</td>
+                        </tr>`).join('')}</tbody>
+                    </table></div>
+                </section>`;
+            }
+        }
+
+        if (!skipSync) this.navigate('electricity');
+        const pageEl = document.getElementById('page-electricity');
+        if (!pageEl) return;
+        pageEl.innerHTML = `<div class="ed-page">
+            <div class="ed-head">
+                <h2>Electricity Details</h2>
+                <div class="ed-head-actions">
+                    <button class="ed-head-btn" onclick="App.refreshElectricityDetails()" title="Refresh"><span class="material-icons-round">refresh</span></button>
+                    <button class="ed-head-btn" onclick="App.manageElectricity()" title="Edit"><span class="material-icons-round">edit</span></button>
+                </div>
+            </div>
+            <section class="ed-card ed-hero">
+                <div class="ed-hero-top"><span>Remaining balance</span><span><b>${prov}</b> · ${this.esc(cfg.number)}</span></div>
+                <div class="ed-balance${cfg.balance !== null && cfg.balance !== undefined && Number(cfg.balance) < Number(cfg.lowThreshold || 200) ? ' low' : ''}">৳${cfg.balance === null || cfg.balance === undefined ? '—' : this._money(cfg.balance)}</div>
+                <div class="ed-meta">
+                    <span>Meter: ${this.esc(info.meter || cfg.number)}</span>
+                    ${avg !== null ? `<span class="ed-avg">Avg. Daily Cost: ৳${this.fmtNum(avg)}</span>` : ''}
+                    <span>Updated ${this.esc(this._ago(cfg.updatedAt))}</span>
+                </div>
+            </section>
+            ${rows.length ? `<section class="ed-card"><h3 class="ed-center">Customer info</h3><table class="ed-list"><tbody>${rows.join('')}</tbody></table></section>` : ''}
+            ${totalUseHtml}
+            ${usageHtml}
+            ${historyHtml}
+            ${!rows.length && !totalUseHtml && !usageHtml && !historyHtml ? `<p class="empty-state" style="padding:10px 0;font-size:13px">Tap Refresh to load the meter details.</p>` : ''}
+        </div>`;
+        this._renderElecUsageChart();
+        if (!skipSync) this._maybeSyncElectricity(cfg.provider === 'desco' && (!cfg.daily || !cfg.daily.length));
+    },
+    elecUsageTab(tab) { this._elecUsageTab = tab; this._elecUsageSel = null; this.showElectricityDetails(true); },
+    elecUsageMetric(metric) { this._elecUsageMetric = metric; this.showElectricityDetails(true); },
+    elecUsagePick(i) { this._elecUsageSel = i; this.showElectricityDetails(true); },
+
+    /* ---- Usage chart: canvas port of Meter Manager (portal style) ---- */
+    _barNum(v) {
+        const n = Math.round((Number(v) || 0) * 100) / 100;
+        const s = n.toFixed(2).replace(/\.?0+$/, '');
+        return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    },
+    _niceStep(raw) {
+        if (!(raw > 0)) return 1;
+        const p = Math.pow(10, Math.floor(Math.log10(raw)));
+        const n = raw / p;
+        return (n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 3 ? 3 : n <= 4 ? 4 : n <= 5 ? 5 : n <= 7.5 ? 7.5 : 10) * p;
+    },
+    _roundTopRect(ctx, x, y, w, h, r) {
+        r = Math.max(0, Math.min(r, w / 2, h));
+        ctx.beginPath();
+        ctx.moveTo(x, y + h);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h);
+        ctx.closePath();
+    },
+    _elecChartItems(tab) {
+        const cfg = this._elecCfg || {};
+        const out = [];
+        if (tab === 'monthly') {
+            const byMonth = {};
+            (Array.isArray(cfg.monthly) ? cfg.monthly : []).forEach(m => {
+                byMonth[String(m.month || '').slice(0, 7)] = { kwh: Number(m.kwh) || 0, taka: Number(m.taka) || 0 };
+            });
+            const now = new Date();
+            for (let i = 11; i >= 0; i--) {
+                const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+                const r = byMonth[key];
+                out.push({
+                    label: dt.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
+                    full: dt.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+                    kwh: r ? r.kwh : 0, taka: r ? r.taka : 0, gap: !r, boundary: false
+                });
+            }
+            return out;
+        }
+        const daily = (Array.isArray(cfg.daily) ? cfg.daily : []).slice()
+            .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        if (!daily.length) return out;
+        const byDate = {};
+        daily.forEach(d => {
+            byDate[String(d.date || '').slice(0, 10)] = { kwh: Number(d.kwh) || 0, taka: Number(d.taka) || 0 };
+        });
+        const start = new Date(String(daily[0].date).slice(0, 10) + 'T00:00:00');
+        const end = new Date(String(daily[daily.length - 1].date).slice(0, 10) + 'T00:00:00');
+        for (let dt = new Date(start); dt <= end && out.length < 62; dt.setDate(dt.getDate() + 1)) {
+            const key = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+            const r = byDate[key];
+            out.push({
+                label: String(dt.getDate()),
+                full: dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+                kwh: r ? r.kwh : 0, taka: r ? r.taka : 0, gap: !r, boundary: key.slice(8, 10) === '01'
+            });
+        }
+        return out;
+    },
+    _renderElecUsageChart() {
+        const canvas = document.getElementById('chElecUsage');
+        if (!canvas) return;
+        const items = this._elecChartItems(this._elecUsageTab);
+        const legend = document.getElementById('elecUsageLegend');
+        if (!items.length) { if (legend) legend.innerHTML = ''; return; }
+        const metric = this._elecUsageMetric;
+        const vals = items.map(x => Number(metric === 'taka' ? x.taka : x.kwh) || 0);
+        const maxV = Math.max.apply(null, vals.concat([1]));
+        const gStep = this._niceStep(maxV / 4);
+        const top = gStep * 4;
+        const padL = 14, padR = 14, padT = 58, padB = 30;
+        const n = items.length;
+        const SLOT_MIN = 58;
+        const dpr = window.devicePixelRatio || 1;
+        const holder = canvas.parentElement;
+        const cw = holder ? holder.clientWidth : 0;
+        if (!cw) return;
+        const w = Math.max(cw, Math.round(n * SLOT_MIN + padL + padR));
+        const h = 280;
+        canvas.style.width = w + 'px';
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        canvas.style.height = h + 'px';
+        if (!canvas._seen) {
+            canvas._seen = 1;
+            const toEnd = () => { holder.scrollLeft = holder.scrollWidth - holder.clientWidth; };
+            toEnd();
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(toEnd);
+            setTimeout(toEnd, 60);
+            setTimeout(toEnd, 250);
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        const css = getComputedStyle(document.body);
+        const txt2 = css.getPropertyValue('--text-secondary').trim() || '#8a93a0';
+        const grid = css.getPropertyValue('--border').trim() || '#e6e9ef';
+        const txt = css.getPropertyValue('--text').trim() || '#14181f';
+        const series = css.getPropertyValue('--chart-bar').trim() || '#2f7de3';
+        const neutral = txt2;
+        const iw = w - padL - padR, ih = h - padT - padB;
+        const slot = iw / Math.max(1, n);
+        const bw = Math.min(30, slot * 0.52);
+        const y0 = padT + ih;
+        const yFor = v => y0 - (Math.max(0, v) / top) * ih;
+        const cx = i => padL + slot * (i + 0.5);
+        this._elecGeom = { padL: padL, slot: slot, n: n, w: w, y0: y0, yFor: yFor, cx: cx };
+
+        ctx.textBaseline = 'alphabetic';
+        for (let i = 0; i <= 4; i++) {
+            const y = yFor(gStep * i);
+            ctx.strokeStyle = grid;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padL, Math.round(y) + 0.5);
+            ctx.lineTo(w - padR, Math.round(y) + 0.5);
+            ctx.stroke();
+        }
+
+        if (this._elecUsageTab === 'daily') {
+            items.forEach((it, i) => {
+                if (!it.boundary || i === 0) return;
+                const x = Math.round(padL + slot * i) + 0.5;
+                ctx.save();
+                ctx.strokeStyle = neutral;
+                ctx.globalAlpha = 0.7;
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(x, padT - 6);
+                ctx.lineTo(x, y0);
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+
+        items.forEach((it, i) => {
+            ctx.globalAlpha = (this._elecUsageSel != null && this._elecUsageSel !== i) ? 0.38 : 1;
+            if (it.gap) {
+                ctx.fillStyle = neutral;
+                ctx.beginPath();
+                ctx.arc(cx(i), y0 - 4, 2.6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                return;
+            }
+            const v = vals[i];
+            const y = yFor(v);
+            const bh = Math.max(0, y0 - y);
+            const x = cx(i) - bw / 2;
+            ctx.fillStyle = series;
+            if (bh < 2) {
+                ctx.fillRect(x, y0 - 2, bw, 2);
+            } else {
+                this._roundTopRect(ctx, x, y, bw, bh, 4);
+                ctx.fill();
+            }
+            if (v > 0) {
+                ctx.fillStyle = txt;
+                ctx.font = '600 11.5px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(metric === 'taka' ? '৳' + this._barNum(v) : this._units(v), cx(i), y - 8);
+            }
+            ctx.globalAlpha = 1;
+        });
+
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = txt2;
+        ctx.font = '11.5px sans-serif';
+        ctx.textAlign = 'center';
+        items.forEach((it, i) => { ctx.fillText(it.label, cx(i), h - 11); });
+
+        if (legend) {
+            const parts = [];
+            if (this._elecUsageTab === 'daily' && items.some(x => x.boundary)) parts.push('<span><span class="dash-swatch"></span>Month reset</span>');
+            if (items.some(x => x.gap)) parts.push('<span><span class="dot round"></span>No reading</span>');
+            legend.innerHTML = parts.join('');
+            legend.style.display = parts.length ? '' : 'none';
+        }
+
+        let dx0 = 0, dy0 = 0;
+        canvas.onpointerdown = e => { dx0 = e.clientX; dy0 = e.clientY; };
+        canvas.onpointerup = e => {
+            const g = this._elecGeom;
+            if (!g) return;
+            if (Math.abs(e.clientX - dx0) > 12 || Math.abs(e.clientY - dy0) > 12) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            let i = Math.floor((x - g.padL) / g.slot);
+            if (x < g.padL || i < 0 || i >= g.n) i = -1;
+            this._elecUsageSel = (i === -1 || this._elecUsageSel === i) ? null : i;
+            this._renderElecUsageChart();
+        };
+        this._showElecUsageTip();
+    },
+    _showElecUsageTip() {
+        const tip = document.getElementById('elecUsageTip');
+        const g = this._elecGeom;
+        if (!tip) return;
+        if (this._elecUsageSel == null || !g) { tip.hidden = true; return; }
+        const it = this._elecChartItems(this._elecUsageTab)[this._elecUsageSel];
+        if (!it) { tip.hidden = true; return; }
+        tip.innerHTML = '<div class="t-month">' + this.esc(it.full) + '</div>'
+            + '<div class="t-row"><span>Energy</span><b>' + this.esc(it.gap ? '–' : this._units(it.kwh)) + '</b></div>'
+            + '<div class="t-row"><span>Cost</span><b>' + this.esc(it.gap ? '–' : '৳' + this._money(it.taka)) + '</b></div>';
+        tip.hidden = false;
+        const v = Number(this._elecUsageMetric === 'taka' ? it.taka : it.kwh) || 0;
+        const barTop = it.gap ? g.y0 - 4 : g.yFor(v);
+        const tw = tip.offsetWidth, th = tip.offsetHeight;
+        let left = g.cx(this._elecUsageSel);
+        left = Math.min(Math.max(left, tw / 2 + 4), g.w - tw / 2 - 4);
+        let top = barTop - 10 - th;
+        if (top < 0) top = 0;
+        tip.style.left = Math.round(left) + 'px';
+        tip.style.top = Math.round(top) + 'px';
+    },
+    async refreshElectricityDetails() {
+        this._elecUsageTab = 'daily';
+        this._elecUsageMetric = 'taka';
+        this._elecUsageSel = null;
+        await this.syncElectricity(true);
+    },
+    async manageElectricity() {
+        this._elecDetailsOpen = false;
+        const cfg = this._elecCfg || await this.loadElectricity();
+        const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
+        const provider = cfg.provider === 'nesco' ? 'nesco' : 'desco';
+        this._elecProvider = provider;
+        document.getElementById('modal-title').textContent = bn ? 'বিদ্যুৎ অ্যাকাউন্ট' : 'Electricity Account';
+        document.getElementById('modal-body').innerHTML = `
+            <div class="form-group"><label>${bn ? 'প্রদানকারী' : 'Provider'}</label>
+                <div class="elec-provider-btns">
+                    <button type="button" class="elec-provider-btn ${provider === 'desco' ? 'active' : ''}" data-prov="desco" onclick="App.electricityProviderChange('desco')">DESCO</button>
+                    <button type="button" class="elec-provider-btn ${provider === 'nesco' ? 'active' : ''}" data-prov="nesco" onclick="App.electricityProviderChange('nesco')">NESCO</button>
+                </div>
+            </div>
+            <div class="form-group"><label>${bn ? 'অ্যাকাউন্ট বা মিটার নম্বর' : 'Account or meter number'}</label>
+                <input type="text" id="elec-number" inputmode="numeric" maxlength="14" value="${this.esc(this._toEnDigits(cfg.number || ''))}" placeholder="${bn ? '৮ অঙ্কের অ্যাকাউন্ট বা ১২ অঙ্কের মিটার' : '8-digit account or 12-digit meter'}">
+            </div>
+            <div id="elec-desco-fields" style="${provider === 'nesco' ? 'display:none' : ''}">
+                <div class="form-group"><label>${bn ? 'DESCO ইউজার আইডি' : 'DESCO User ID'}</label>
+                    <input type="text" id="elec-user" value="" placeholder="${cfg.user ? (bn ? 'সংরক্ষিত · পরিবর্তন করতে লিখুন' : 'Saved · type to change') : ''}" autocomplete="off">
+                </div>
+                <div class="form-group"><label>${bn ? 'DESCO পাসওয়ার্ড' : 'DESCO Password'}</label>
+                    <input type="password" id="elec-pass" value="" placeholder="${cfg.password ? (bn ? 'সংরক্ষিত · পরিবর্তন করতে লিখুন' : 'Saved · type to change') : ''}" autocomplete="new-password">
+                </div>
+            </div>
+            <div class="form-group"><label>${bn ? 'সর্বনিম্ন ব্যালেন্স সতর্কতা' : 'Low balance threshold'}</label>
+                <input type="number" id="elec-low" inputmode="numeric" min="0" step="1" value="${Number(cfg.lowThreshold || 200)}" placeholder="200">
+            </div>`;
+        document.getElementById('modal-footer').innerHTML = `<div class="dep-footer-btns">
+            <button class="btn-modal-cancel" onclick="App.closeModal()">${bn ? 'বাতিল' : 'Cancel'}</button>
+            <button class="btn-modal-add" onclick="App.saveElectricity()">${bn ? 'সংরক্ষণ' : 'Save'}</button>
+        </div>`;
+        this.openModal();
+    },
+    electricityProviderChange(provider) {
+        this._elecProvider = provider === 'nesco' ? 'nesco' : 'desco';
+        document.querySelectorAll('.elec-provider-btn').forEach(b => b.classList.toggle('active', b.dataset.prov === this._elecProvider));
+        const fields = document.getElementById('elec-desco-fields');
+        if (fields) fields.style.display = this._elecProvider === 'desco' ? '' : 'none';
+    },
+    async saveElectricity() {
+        if (!this.messId) return;
+        const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
+        const provider = this._elecProvider === 'nesco' ? 'nesco' : 'desco';
+        const number = this._toEnDigits((document.getElementById('elec-number').value || '').trim()).replace(/\D/g, '');
+        if (!number) { this.toast(bn ? 'অ্যাকাউন্ট বা মিটার নম্বর দিন' : 'Enter the account or meter number', 'error'); return; }
+        if (provider === 'desco' && !/^(\d{8}|\d{12})$/.test(number)) { this.toast(bn ? 'DESCO: ৮ অঙ্কের অ্যাকাউন্ট বা ১২ অঙ্কের মিটার নম্বর দিন' : 'DESCO: enter an 8-digit account or 12-digit meter number', 'error'); return; }
+        if (provider === 'nesco' && !/^\d{8,11}$/.test(number)) { this.toast(bn ? 'NESCO: ৮–১১ অঙ্কের কনজিউমার নম্বর দিন' : 'NESCO: enter an 8–11 digit consumer number', 'error'); return; }
+        const prev = this._elecCfg || {};
+        const sameMeter = prev.provider === provider && String(prev.number || '') === number;
+        const typedUser = provider === 'desco' ? (document.getElementById('elec-user').value || '').trim() : '';
+        const typedPass = provider === 'desco' ? (document.getElementById('elec-pass').value || '') : '';
+        if (provider === 'desco' && ((typedUser && !typedPass) || (!typedUser && typedPass))) {
+            this.toast(bn ? 'DESCO ইমেইল/মোবাইল ও পাসওয়ার্ড দুটোই দিন' : 'Enter both the DESCO login and password', 'error');
+            return;
+        }
+        /* The form opens blank; empty fields keep the saved credentials. */
+        const keepCreds = provider === 'desco' && sameMeter && !!prev.user && !!prev.password;
+        const login = typedUser || (keepCreds ? prev.user : '');
+        const password = typedPass || (keepCreds ? prev.password : '');
+        const lowEl = document.getElementById('elec-low');
+        const lowThreshold = Math.max(0, Math.round(Number(lowEl && lowEl.value)) || 200);
+        const cfg = Object.assign({}, prev, {
+            enabled: prev.userEnabled === true,
+            provider, number, user: login, password, lowThreshold,
+            balance: sameMeter && prev.balance !== undefined ? prev.balance : null,
+            updatedAt: Date.now()
+        });
+        try {
+            await db.ref(`messes/${this.messId}/settings/electricity`).set(cfg);
+            this._elecCfg = cfg;
+            const cached = this._cacheGet('settings') || {};
+            cached.electricity = cfg;
+            this._cacheSet('settings', cached);
+            this.closeModal();
+            this.applyElectricityCard();
+            this.toast(bn ? 'সংরক্ষণ হয়েছে' : 'Electricity account saved', 'success');
+            if (this.currentPage === 'electricity') this.showElectricityDetails(true);
+            if (this._capHttp()) this.syncElectricity(true);
+        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+    },
+    async toggleElectricityCard(checked) {
+        if (!this.messId) return;
+        this._elecCfg = Object.assign(this._elecDefault(), this._elecCfg || {}, { enabled: !!checked, userEnabled: !!checked });
+        this.applyElectricityCard();
+        try {
+            await db.ref(`messes/${this.messId}/settings/electricity`).update({ enabled: !!checked, userEnabled: !!checked });
+            const cached = this._cacheGet('settings') || {};
+            cached.electricity = Object.assign({}, cached.electricity || {}, { enabled: !!checked });
+            this._cacheSet('settings', cached);
+            const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
+            if (checked && this._capHttp()) this.syncElectricity(false);
+            this.toast(checked ? (bn ? 'বিদ্যুৎ কার্ড দেখানো হচ্ছে' : 'Electricity card shown') : (bn ? 'বিদ্যুৎ কার্ড লুকানো হয়েছে' : 'Electricity card hidden'), 'info');
+        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+    },
+    /* ---------- Live meter balance · Android only ----------
+       Same collection logic as Meter Manager: the DESCO portal v2 is called
+       with the saved portal login (accounts → balance), and the NESCO
+       customer panel is driven with its session cookie + CSRF token.
+       Browsers cannot reach either portal (CORS / session cookies), so the
+       requests go through Capacitor's native HTTP bridge. */
+    _capHttp() {
+        const C = window.Capacitor;
+        if (!C || !C.isNativePlatform || !C.isNativePlatform()) return null;
+        return (C.Plugins && C.Plugins.CapacitorHttp) || null;
+    },
+    async _nativeHttp(opts) {
+        const http = this._capHttp();
+        if (!http) throw new Error('Native HTTP unavailable');
+        return await http.request(Object.assign({ connectTimeout: 20000, readTimeout: 30000 }, opts));
+    },
+    _jsonPayload(res) {
+        let body = res ? res.data : null;
+        if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { return null; } }
+        return body && typeof body === 'object' && body.data !== undefined ? body.data : body;
+    },
+    _unhtml(s) {
+        return String(s || '')
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&nbsp;/g, ' ')
+            .trim();
+    },
+    _money(v) {
+        return (Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    _units(v) {
+        const n = Math.round((Number(v) || 0) * 100) / 100;
+        return (Number.isInteger(n) ? String(n) : String(n)) + ' kWh';
+    },
+    _ago(ts) {
+        if (!ts) return 'never';
+        const s = Math.max(0, Math.round((Date.now() - Number(ts)) / 1000));
+        if (s < 60) return 'just now';
+        const m = Math.round(s / 60);
+        if (m < 60) return m + (m === 1 ? ' min ago' : ' mins ago');
+        const h = Math.round(m / 60);
+        if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+        const d = Math.round(h / 24);
+        return d + (d === 1 ? ' day ago' : ' days ago');
+    },
+    _descoKwh(taka) {
+        const amt = Number(taka) || 0;
+        if (amt <= 0) return 0;
+        const tiers = [{ kwh: 75, rate: 6.18 }, { kwh: 125, rate: 8.50 }, { kwh: 100, rate: 9.10 }, { kwh: 100, rate: 9.62 }, { kwh: 200, rate: 15.01 }, { kwh: Infinity, rate: 17.75 }];
+        let remaining = amt, total = 0;
+        for (const t of tiers) {
+            const cost = t.kwh * t.rate;
+            if (remaining < cost) { total += remaining / t.rate; break; }
+            total += t.kwh; remaining -= cost;
+        }
+        return Math.round(total * 100) / 100;
+    },
+    _histDate(v) {
+        if (!v) return '—';
+        const d = new Date(String(v).replace(' ', 'T'));
+        if (isNaN(d.getTime())) return String(v);
+        return d.toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+    },
+    _elecDateStr(offset) {
+        const d = new Date(Date.now() + offset * 86400000);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    },
+    _elecMonthStr(offset) {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() + offset);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    },
+    _maybeSyncElectricity(force) {
+        if (!this.messId || !this._capHttp()) return;
+        const cfg = this._elecCfg;
+        if (!cfg || !cfg.enabled || !cfg.number || this._elecSyncing) return;
+        if (!force && cfg.updatedAt && Date.now() - cfg.updatedAt < 10 * 60 * 1000) return;
+        this.syncElectricity(false);
+    },
+    async syncElectricity(notify) {
+        const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
+        if (!this.messId) return;
+        const cfg = this._elecCfg;
+        if (!cfg || !cfg.number) {
+            if (notify) this.toast(bn ? 'প্রথমে অ্যাকাউন্ট যোগ করুন' : 'Add the account first', 'error');
+            return;
+        }
+        if (!this._capHttp()) {
+            if (notify) this.toast(bn ? 'লাইভ ব্যালেন্স শুধু অ্যান्ড্রয়েড অ্যাপে পাওয়া যায়' : 'Live balance is available in the Android app', 'info');
+            return;
+        }
+        if (this._elecSyncing) return;
+        this._elecSyncing = true;
+        if (notify) this.toast(bn ? 'ব্যালেন্স আপডেট হচ্ছে...' : 'Updating Balance...', 'info');
+        try {
+            const result = cfg.provider === 'nesco' ? await this._nescoBalance(cfg) : await this._descoBalance(cfg);
+            const balance = result && typeof result === 'object' ? result.balance : result;
+            if (balance === null || balance === undefined || isNaN(balance)) throw new Error(bn ? 'ব্যালেন্স পাওয়া যায়নি' : 'No balance returned');
+            cfg.balance = Math.round(balance * 100) / 100;
+            cfg.updatedAt = Date.now();
+            if (result && typeof result === 'object') {
+                            if (result.info) cfg.info = result.info;
+            if (result.history) cfg.history = result.history;
+            if (result.daily) cfg.daily = result.daily;
+            if (result.monthly) cfg.monthly = result.monthly;
+            }
+            this._elecCfg = cfg;
+            const patch = { balance: cfg.balance, updatedAt: cfg.updatedAt };
+            if (cfg.info) patch.info = cfg.info;
+            if (cfg.history) patch.history = cfg.history;
+            if (cfg.daily) patch.daily = cfg.daily;
+            if (cfg.monthly) patch.monthly = cfg.monthly;
+            try { await db.ref(`messes/${this.messId}/settings/electricity`).update(patch); } catch (e) {}
+            const cached = this._cacheGet('settings') || {};
+            cached.electricity = Object.assign({}, cached.electricity || {}, patch);
+            this._cacheSet('settings', cached);
+            this.applyElectricityCard();
+            if (this._elecDetailsOpen && this.currentPage === 'electricity') this.showElectricityDetails(true);
+            if (notify) this.toast((bn ? 'ব্যালেন্স আপডেট হয়েছে ৳ ' : 'Balance updated to ৳') + this.fmtNum(cfg.balance), 'success');
+        } catch (e) {
+            if (notify) this.toast(e.message || (bn ? 'ব্যালেন্স আনা যায়নি' : 'Could not fetch the balance'), 'error');
+        } finally {
+            this._elecSyncing = false;
+        }
+    },
+    async _descoBalance(cfg) {
+        const base = 'https://prepaid.desco.org.bd/api';
+        const headers = { Accept: 'application/json' };
+        if (cfg.user && cfg.password) {
+            const login = await this._nativeHttp({
+                url: base + '/auth/login', method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+                data: { username: cfg.user, password: cfg.password }
+            });
+            if (login.status === 401 || login.status === 403) throw new Error('DESCO rejected the saved login');
+            if (login.status >= 400) throw new Error('DESCO login failed (' + login.status + ')');
+        }
+        const number = String(cfg.number || '').replace(/\D/g, '');
+        const accountsRes = await this._nativeHttp({ url: base + '/accounts', headers });
+        if (accountsRes.status === 401 || accountsRes.status === 403) throw new Error('DESCO login required');
+        const accountsBody = this._jsonPayload(accountsRes) || {};
+        const accounts = Array.isArray(accountsBody) ? accountsBody : (accountsBody.accounts || []);
+        const norm = v => String(v || '').replace(/\D/g, '');
+        let account = accounts.find(a => norm(a.accountNo) === number) || null;
+        if (!account && number.length !== 12) {
+            const linkRes = await this._nativeHttp({
+                url: base + '/accounts/link', method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+                data: { accountNo: number }
+            });
+            const linked = this._jsonPayload(linkRes);
+            if (linked && linked.accountId !== undefined) account = linked;
+        }
+        if (!account || account.accountId === undefined || account.accountId === null) throw new Error('DESCO account not linked');
+        const balRes = await this._nativeHttp({ url: base + '/accounts/' + account.accountId + '/balance', headers });
+        if (balRes.status === 401 || balRes.status === 403) throw new Error('DESCO session expired');
+        const bal = this._jsonPayload(balRes);
+        if (!bal || bal.balance === undefined || bal.balance === null) return null;
+        const out = { balance: Number(bal.balance), info: cfg.info || null };
+        try {
+            const summaryRes = await this._nativeHttp({ url: base + '/accounts/' + account.accountId + '/summary', headers });
+            const s = this._jsonPayload(summaryRes);
+            if (s && typeof s === 'object') {
+                out.info = {
+                    name: s.customerName || '', account: s.accountNo || account.accountNo || '',
+                    meter: s.meterNo || '', route: s.route || '', load: s.sanctionLoad || '',
+                    tariff: s.tariffSolution || '', phase: s.phaseType || '', status: s.status || ''
+                };
+            }
+        } catch (e) { /* summary is optional */ }
+        const acct = base + '/accounts/' + account.accountId;
+        const qs = o => Object.keys(o).map(k => k + '=' + encodeURIComponent(o[k])).join('&');
+        const unwrap = body => Array.isArray(body) ? body : (body && Array.isArray(body.data) ? body.data : []);
+        try {
+            const dRes = await this._nativeHttp({ url: acct + '/usage/daily?' + qs({ dateFrom: this._elecDateStr(-29), dateTo: this._elecDateStr(0) }), headers });
+            const dBody = this._jsonPayload(dRes);
+            const dRows = Array.isArray(dBody) ? dBody : (dBody && Array.isArray(dBody.days) ? dBody.days : []);
+            out.daily = dRows.map(r => ({
+                date: String(r.consumptionDate || r.date || r.readingDate || '').slice(0, 10),
+                kwh: Number(r.dailyConsumedUnit ?? r.consumedUnit ?? r.consumptionUnit ?? 0) || 0,
+                taka: Number(r.dailyConsumedTaka ?? r.consumedTaka ?? r.consumptionTaka ?? 0) || 0
+            })).filter(r => r.date).sort((a, b) => a.date < b.date ? -1 : 1);
+        } catch (e) { /* usage is optional */ }
+        try {
+            const mRes = await this._nativeHttp({ url: acct + '/usage/monthly?' + qs({ monthFrom: this._elecMonthStr(-11), monthTo: this._elecMonthStr(0) }), headers });
+            out.monthly = unwrap(this._jsonPayload(mRes)).map(r => ({
+                month: String(r.month || r.consumptionMonth || '').slice(0, 7),
+                kwh: Number(r.consumedUnit ?? r.consumptionUnit ?? 0) || 0,
+                taka: Number(r.consumedTaka ?? r.consumptionTaka ?? 0) || 0
+            })).filter(r => r.month).sort((a, b) => a.month < b.month ? -1 : 1);
+        } catch (e) { /* usage is optional */ }
+        try {
+            const hRes = await this._nativeHttp({ url: acct + '/transactions?' + qs({ dateFrom: this._elecDateStr(-364), dateTo: this._elecDateStr(0) }), headers });
+            out.history = unwrap(this._jsonPayload(hRes)).slice(0, 60).map(r => ({
+                date: r.rechargeDate || r.date || r.createdAt || '',
+                token: (Array.isArray(r.chargeItems) ? r.chargeItems.map(c => c.tokenNo || c.token || '').filter(Boolean).join(', ') : '') || r.tokenNo || r.token || r.orderID || r.orderId || '',
+                total: Number(r.totalAmount) || 0,
+                amount: Number(r.energyAmount) || 0,
+                kwh: Number(r.energyUnit) || 0,
+                rent: Number(r.meterRent) || 0,
+                charge: Number(r.demandCharge) || 0,
+                vat: Number(r.vat ?? r.VAT) || 0,
+                rebate: Number(r.rebate) || 0,
+                status: r.orderStatus || r.status || r.rechargeStatus || ''
+            }));
+        } catch (e) { /* history is optional */ }
+        return out;
+    },
+    async _nescoBalance(cfg) {
+        const panel = 'https://customer.nesco.gov.bd/pre/panel';
+        const ua = 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
+        const htmlRes = await this._nativeHttp({ url: panel, headers: { 'User-Agent': ua, Accept: 'text/html,application/xhtml+xml' } });
+        const html = typeof htmlRes.data === 'string' ? htmlRes.data : '';
+        const token = (html.match(/name="_token"\s+value="([^"]+)"/) || [])[1];
+        if (!token) throw new Error('NESCO portal session failed');
+        const submit = '\u09B0\u09BF\u099A\u09BE\u09B0\u09CD\u099C \u09B9\u09BF\u09B8\u09CD\u099F\u09CD\u09B0\u09BF';
+        const form = '_token=' + encodeURIComponent(token) + '&cust_no=' + encodeURIComponent(String(cfg.number).replace(/\D/g, '')) + '&submit=' + encodeURIComponent(submit);
+        const post = await this._nativeHttp({
+            url: panel, method: 'POST',
+            headers: { 'User-Agent': ua, Accept: 'text/html,application/xhtml+xml', 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'https://customer.nesco.gov.bd', Referer: panel },
+            data: form
+        });
+        const out = typeof post.data === 'string' ? post.data : '';
+        let balance = '';
+        let inputs = [];
+        const start = out.indexOf('id="con_info_div"');
+        if (start >= 0) {
+            let end = out.indexOf('consumerRechargeData', start);
+            if (end < 0) end = out.indexOf('arrear_notice_div', start);
+            if (end < 0) end = out.length;
+            const seg = out.slice(start, end);
+            inputs = [...seg.matchAll(/<input[^>]*(?:readonly|disabled)[^>]*value="([^"]*)"/g)].map(m => m[1]);
+            balance = (inputs[14] || '').trim();
+        }
+        if (!balance) {
+            const m = out.match(/id="[^"]*balance[^"]*"[^>]*value="([^"]*)"/i);
+            if (m) balance = m[1];
+        }
+        if (!balance) return null;
+        const val = i => this._unhtml((inputs[i] || '').trim());
+        const history = [];
+        const reRows = /<[^>]*?consumerRechargeData[^>]*>/g;
+        let row;
+        while ((row = reRows.exec(out)) && history.length < 8) {
+            const tag = row[0];
+            const attr = k => {
+                const mm = tag.match(new RegExp("data-" + k + "=[\"']([^\"']*)", 'i'));
+                return mm ? this._unhtml(mm[1]) : '';
+            };
+            const amount = parseFloat(String(attr('totalamount')).replace(/,/g, '')) || 0;
+            const date = attr('purchasedate');
+            if (!date && !amount) continue;
+            history.push({ date, amount, method: attr('salename'), token: attr('token'), kwh: parseFloat(String(attr('purchaseenergy')).replace(/,/g, '')) || 0 });
+        }
+        return {
+            balance: Number(String(balance).replace(/[,\s৳]/g, '')),
+            info: {
+                name: val(0), address: val(2), mobile: val(3), office: val(4),
+                account: val(6), meter: val(7), load: val(8), tariff: val(9),
+                meterType: val(10), status: val(11), installDate: val(12), minRecharge: val(13)
+            },
+            history
+        };
     },
     // Floating "Add" pills (Meal / Expense / Deposit / Bazar / Notice) share one
     // draggable position: drag any of them and every page keeps it there.
@@ -6121,7 +6923,7 @@ https://u2l.ai/MessManager
         document.getElementById('confirm-no').onclick = () => { document.getElementById('modal-overlay').classList.remove('active'); cb(false); };
     },
     openModal() { document.getElementById('modal').classList.remove('confirm-mode'); document.getElementById('modal-overlay').classList.add('active'); },
-    closeModal() { document.getElementById('modal-overlay').classList.remove('active'); },
+    closeModal() { this._elecDetailsOpen = false; document.getElementById('modal-overlay').classList.remove('active'); },
     openDialog(title, bodyHtml, actions = [], canClose = true) {
         document.getElementById('dlgTitle').textContent = title;
         document.getElementById('dlgBody').innerHTML = bodyHtml;
@@ -6159,6 +6961,15 @@ https://u2l.ai/MessManager
        window.Capacitor only exists when the native shell injects it. */
     _isNativeApp() {
         return !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+    },
+
+    async updateVersionLabel() {
+        try {
+            const info = await window.Capacitor?.Plugins?.App?.getInfo?.();
+            if (!info) return;
+            const txt = 'Version ' + info.version + ' (build ' + info.build + ')';
+            document.querySelectorAll('[data-lang-key="prof_version"]').forEach(el => { el.textContent = txt; });
+        } catch (e) { /* ignore */ }
     },
 
     /* Current installed build (versionCode) — read from the native package info

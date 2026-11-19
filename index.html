@@ -242,6 +242,15 @@
                 </div>
                 </div>
 
+                <div class="adash-finance-card" id="dash-elec-card" style="margin-top:4px;display:none">
+                <div class="adash-finance">
+                    <div class="adash-fin-label adash-elec-head" onclick="App.showElectricityDetails()"><span class="material-icons-round" style="font-size:18px;color:var(--primary)">bolt</span><strong data-lang-key="dash_electricity">Electricity</strong><button class="adash-elec-refresh" onclick="event.stopPropagation();App.refreshElectricityDetails()" title="Refresh"><span class="material-icons-round">refresh</span></button></div>
+                    <div class="adash-fin-box" style="cursor:pointer" onclick="App.showElectricityDetails()"><small id="dash-elec-provider">DESCO</small><strong id="dash-elec-number">Add meter</strong></div>
+                    <div class="adash-fin-box"><small data-lang-key="dash_balance">Balance</small><strong id="dash-elec-balance">৳ —</strong></div>
+                    <div class="adash-analyse" onclick="App.showElectricityDetails()"><span class="material-icons-round">tune</span> <span data-lang-key="dash_view_details">View Details</span></div>
+                </div>
+                </div>
+
                 <div class="adash-stats">
                     <div class="adash-stats-head">
                         <span class="material-icons-round">groups</span>
@@ -544,6 +553,7 @@
                 </div>
                 <button class="anotice-fab" onclick="App.showNoticeModal()"><span class="material-icons-round">push_pin</span> <span data-lang-key="nb_pin">Pin a notice</span></button>
             </div>
+            <div class="page" id="page-electricity"></div>
             <div class="page" id="page-monthly"></div>
 
             <!-- BAZAR NOTE PAGE -->
@@ -610,11 +620,23 @@
                                 <span class="lt-text">EN</span>
                             </div>
                         </div>
+                        <div class="aprof-row">
+                            <span class="material-icons-round">bolt</span>
+                            <div class="aprof-text">
+                                <span class="aprof-label" data-lang-key="prof_elec_card">Electricity Card</span>
+                            </div>
+                            <label class="toggle"><input type="checkbox" id="prof-elec-card" onchange="App.toggleElectricityCard(this.checked)"><span class="toggle-slider"></span></label>
+                        </div>
                         </div>
                     </div>
                 <div class="aprof-section">
                     <div class="aprof-card">
                         <div class="aprof-section-title" data-lang-key="prof_account">ACCOUNT</div>
+                        <div class="aprof-row" onclick="App.manageElectricity()">
+                            <span class="material-icons-round">bolt</span>
+                            <span class="aprof-label" data-lang-key="prof_manage_elec">Add DESCO/NESCO Account</span>
+                            <span class="material-icons-round aprof-chevron">chevron_right</span>
+                        </div>
                         <div class="aprof-row" onclick="App.leaveMess()">
                             <span class="material-icons-round">logout</span>
                             <span class="aprof-label" data-lang-key="prof_leave_mess">Leave Mess</span>

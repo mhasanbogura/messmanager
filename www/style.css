@@ -10,6 +10,7 @@
     --danger-glow: rgba(211,47,47,0.25);
     --purple: #7b61c9;
     --blue: #3b7bdd;
+    --chart-bar: #2f7de3;
     --bg: #f2f4f8;
     --bg-gradient: linear-gradient(160deg, #f2f4f8 0%, #e8ecf2 50%, #f2f4f8 100%);
     --card: #ffffff;
@@ -3844,3 +3845,140 @@ img, canvas { max-width: 100%; }
     transition: none !important;
     cursor: grabbing;
 }
+
+/* Electricity card: provider badge + account/meter number fit the utility-style box */
+#dash-elec-provider { text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+#dash-elec-number { font-size: 12.5px; letter-spacing: 0; }
+
+/* Electricity account modal: provider selection buttons */
+.elec-provider-btns { display: flex; gap: 8px; }
+.elec-provider-btn {
+    flex: 1; padding: 11px 12px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--card-border); background: var(--card);
+    color: var(--text); font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; min-height: 44px; transition: all var(--transition);
+}
+.elec-provider-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.elec-provider-btn:active { opacity: .9; }
+
+/* Form-modal footers keep the same text-button look in the OLED theme */
+[data-theme="oled"] .dep-footer-btns .btn-modal-add,
+[data-theme="oled"] .dep-footer-btns .btn-modal-cancel {
+    background: none; background-image: none; box-shadow: none;
+    color: var(--text-secondary, #5b6472);
+}
+[data-theme="oled"] .dep-footer-btns .btn-modal-add { color: #2563eb; }
+[data-theme="oled"] .dep-footer-btns .btn-modal-add:hover { background: rgba(37,99,235,.12); background-image: none; color: #2563eb; }
+[data-theme="oled"] .dep-footer-btns .btn-modal-cancel:hover { background: rgba(127,127,127,.10); background-image: none; }
+
+/* Keep form-modal actions visible while the modal content scrolls */
+.modal > .modal-footer {
+    position: sticky; bottom: 0; z-index: 2;
+    background: var(--card-solid);
+}
+
+/* Electricity details sheet */
+.elec-detail-hero {
+    background: var(--bg); border: 1px solid var(--card-border); border-radius: 14px;
+    padding: 16px 16px 14px; text-align: center; margin-bottom: 14px;
+}
+.elec-detail-top {
+    display: flex; justify-content: space-between; font-size: 11px; letter-spacing: .6px;
+    text-transform: uppercase; font-weight: 700; color: #8a93a0;
+}
+.elec-detail-balance { font-size: 30px; font-weight: 800; color: var(--text); margin: 10px 0 2px; letter-spacing: -.5px; }
+.elec-detail-cap { font-size: 12px; color: #8a93a0; }
+.elec-detail-sub { display: flex; flex-direction: column; gap: 3px; margin-top: 9px; font-size: 12px; color: var(--text-secondary, #5b6472); }
+.elec-info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.elec-info-table td { padding: 8px 2px; border-bottom: 1px solid var(--card-border); vertical-align: top; }
+.elec-info-table td:first-child { color: #8a93a0; width: 44%; }
+.elec-info-table td:last-child { text-align: right; font-weight: 600; color: var(--text); word-break: break-word; }
+.elec-info-table tr:last-child td { border-bottom: none; }
+.elec-history-head { margin: 14px 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: #8a93a0; }
+.elec-history-row { display: flex; align-items: center; gap: 8px; padding: 9px 2px; border-bottom: 1px solid var(--card-border); font-size: 13px; color: var(--text); }
+.elec-history-row span { flex: 1; color: var(--text-secondary, #5b6472); font-size: 12px; }
+.elec-history-row strong { font-weight: 700; }
+.elec-history-row small { color: #8a93a0; min-width: 52px; text-align: right; }
+.elec-history-row:last-child { border-bottom: none; }
+
+/* Electricity card low balance */
+#dash-elec-balance.low { color: #e53935; }
+
+/* Electricity card header refresh */
+.adash-elec-head { justify-self: stretch; display: flex; align-items: center; gap: 4px; }
+.adash-elec-refresh {
+    margin-left: auto; display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; padding: 0; border: none; border-radius: 7px;
+    background: transparent; color: var(--text-secondary, #5b6472); cursor: pointer;
+}
+.adash-elec-refresh .material-icons-round { font-size: 17px; }
+.adash-elec-refresh:active { background: rgba(0,0,0,.06); }
+[data-theme="oled"] .adash-elec-refresh { color: #999; }
+
+/* Electricity detail page (Meter Manager style) */
+#app-screen.on-electricity .topbar { display: none; }
+.ed-page { padding: 12px 14px 96px; max-width: 900px; margin: 0 auto; }
+.ed-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px 10px; min-height: 44px; }
+.ed-head h2 { font-size: 18px; font-weight: 700; color: var(--text); }
+.ed-head-actions { display: flex; align-items: center; gap: 2px; }
+.ed-head-btn { background: none; border: none; color: var(--text); padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ed-head-btn:hover { background: rgba(0,0,0,.08); }
+.ed-head-btn .material-icons-round { font-size: 22px; }
+.ed-balance.low { color: #e53935; }
+
+/* Electricity detail sheet (Meter Manager style) */
+.ed-card {
+    background: var(--card-solid); border: 1px solid var(--card-border);
+    border-radius: 16px; padding: 14px 14px 12px; margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.ed-card:last-child { margin-bottom: 0; }
+.ed-card h3 { margin: 0 0 10px; font-size: 17px; font-weight: 700; color: var(--text); }
+.ed-card h3.ed-center { text-align: center; }
+.ed-card h3.ed-left { text-align: left; margin: 0; }
+.ed-hero { padding: 16px 14px; display: flex; flex-direction: column; gap: 2px; }
+.ed-hero-top { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--text-secondary, #8a93a0); }
+.ed-hero-top b { color: var(--primary); letter-spacing: .5px; }
+.ed-balance { font-size: 34px; font-weight: 800; letter-spacing: -.5px; color: var(--text); line-height: 1.15; margin: 4px 0 6px; }
+.ed-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--text-secondary, #8a93a0); }
+.ed-avg { color: #d99a2b; font-weight: 700; }
+.ed-list { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ed-list td { padding: 8px 2px; border-bottom: 1px solid var(--card-border); vertical-align: top; }
+.ed-list tr:last-child td { border-bottom: none; }
+.ed-list td:first-child { color: var(--text-secondary, #8a93a0); width: 42%; }
+.ed-list td:nth-child(2) { font-weight: 600; color: var(--text); word-break: break-word; }
+.ed-list td.ed-right-num { text-align: right; }
+.ed-usage-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.ed-tabs { display: inline-flex; gap: 3px; padding: 3px; border-radius: 999px; background: var(--bg); }
+.ed-metric { margin-bottom: 10px; }
+.ed-tab { border: 0; background: transparent; color: var(--text-secondary, #5b6472); font-family: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px; cursor: pointer; }
+.ed-tab.active { background: var(--card-solid); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.ed-chart-wrap { position: relative; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ed-chart-wrap canvas { display: block; height: 280px; max-width: none; }
+.chart-tip { position: absolute; z-index: 5; min-width: 132px; max-width: 210px; background: var(--card-solid); border: 1px solid var(--card-border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.18); padding: 7px 10px; font-size: 11.5px; transform: translateX(-50%); pointer-events: none; }
+.chart-tip[hidden] { display: none; }
+.chart-tip .t-month { font-weight: 700; color: var(--text); margin-bottom: 3px; white-space: nowrap; }
+.chart-tip .t-row { display: flex; justify-content: space-between; gap: 14px; color: var(--text-secondary, #5b6472); line-height: 1.65; white-space: nowrap; }
+.chart-tip .t-row b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ed-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; font-size: 12px; color: var(--text-secondary, #5b6472); }
+.ed-legend .dash-swatch { display: inline-block; width: 0; height: 12px; border-left: 2px dashed var(--text-secondary, #98a1ac); margin-right: 7px; vertical-align: -2px; }
+.ed-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+.ed-legend .dot.round { border-radius: 50%; background: var(--text-secondary, #98a1ac); }
+.ed-tbl-scroll { overflow-x: auto; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
+.ed-hist { width: 100%; min-width: 720px; border-collapse: collapse; table-layout: fixed; font-size: 10px; }
+.ed-hist th, .ed-hist td { border: 1px solid var(--card-border); padding: 5px 2px; text-align: center; vertical-align: middle; word-break: break-word; }
+.ed-hist th { color: var(--text-secondary, #8a93a0); font-weight: 600; font-size: 7.5px; text-transform: uppercase; letter-spacing: 0; }
+.ed-hist th:nth-child(1), .ed-hist td:nth-child(1) { width: 15%; }
+.ed-hist th:nth-child(2), .ed-hist td:nth-child(2) { width: 18%; }
+.ed-hist th:nth-child(3), .ed-hist td:nth-child(3) { width: 11%; }
+.ed-hist th:nth-child(4), .ed-hist td:nth-child(4) { width: 10%; }
+.ed-hist th:nth-child(5), .ed-hist td:nth-child(5) { width: 8%; }
+.ed-hist th:nth-child(6), .ed-hist td:nth-child(6),
+.ed-hist th:nth-child(7), .ed-hist td:nth-child(7),
+.ed-hist th:nth-child(8), .ed-hist td:nth-child(8),
+.ed-hist th:nth-child(9), .ed-hist td:nth-child(9),
+.ed-hist th:nth-child(10), .ed-hist td:nth-child(10) { width: 10%; }
+.ed-hist td { color: var(--text); }
+.ed-hist .ed-token { white-space: normal; word-break: break-all; }
+.ed-hist .ed-ok { color: #1a9c53; font-weight: 700; }
+[data-theme="oled"] .ed-tab.active { background: #262626; }
