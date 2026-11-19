@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.29 (build 820)',
+        prof_version:'Version 1.6.30 (build 823)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.29 (বিল্ড 820)',
+            prof_version:'ভার্সন 1.6.30 (বিল্ড 823)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -5303,7 +5303,7 @@ https://u2l.ai/MessManager
             } else {
                 historyHtml = `
                 <section class="ed-card">
-                    <h3 class="ed-center ed-blue">Recharge History</h3>
+                    <h3 class="ed-center">Recharge History</h3>
                     <div class="ed-tbl-scroll"><table class="ed-hist">
                         <thead><tr><th>Date</th><th>Token</th><th>Total</th><th>Energy Amount</th><th>Energy (kWh)</th></tr></thead>
                         <tbody>${history.slice(0, 60).map(r => `<tr>
@@ -5402,9 +5402,18 @@ https://u2l.ai/MessManager
         daily.forEach(d => {
             byDate[String(d.date || '').slice(0, 10)] = { kwh: Number(d.kwh) || 0, taka: Number(d.taka) || 0 };
         });
-        const start = new Date(String(daily[0].date).slice(0, 10) + 'T00:00:00');
-        const end = new Date(String(daily[daily.length - 1].date).slice(0, 10) + 'T00:00:00');
-        for (let dt = new Date(start); dt <= end && out.length < 62; dt.setDate(dt.getDate() + 1)) {
+        let start = new Date(String(daily[0].date).slice(0, 10) + 'T00:00:00');
+        const lastRead = new Date(String(daily[daily.length - 1].date).slice(0, 10) + 'T00:00:00');
+        // Keep showing the days that have already passed (or today) after the
+        // last reading, so they appear as "No reading" dots like Meter Manager.
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const end = lastRead > today ? lastRead : today;
+        // Show at most the last 62 days, always keeping today in view.
+        if (Math.round((end - start) / 86400000) + 1 > 62) {
+            start = new Date(end.getTime() - 61 * 86400000);
+        }
+        for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
             const key = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
             const r = byDate[key];
             out.push({
