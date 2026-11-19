@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.17 (build 784)',
+        prof_version:'Version 1.6.18 (build 787)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.17 (বিল্ড 784)',
+            prof_version:'ভার্সন 1.6.18 (বিল্ড 787)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -820,7 +820,7 @@ const App = {
         const email = document.getElementById('reset-email').value.trim();
         if (!email) { this.toast('Enter email', 'error'); return; }
         try { await auth.sendPasswordResetEmail(email); this.toast('Reset link sent!', 'success'); setTimeout(() => this.showScreen('auth-screen'), 2000); }
-        catch (e) { this.toast(e.message, 'error'); }
+        catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     _validMid(mid) {
@@ -1545,7 +1545,7 @@ const App = {
             this.toast('Mess created!', 'success');
             document.getElementById('create-mess-name').value = '';
             this.enterMess(newKey, { skipMemberCheck: true });
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
         finally { btn.textContent = 'Create Mess'; btn.disabled = false; }
     },
 
@@ -1606,14 +1606,14 @@ const App = {
                     try { await db.ref(`users/${joinUid}/messes/${mid}`).remove(); } catch (e2) {}
                     try { await db.ref(`users/${joinUid}/currentMess`).remove(); } catch (e2) {}
                 }
-                this.toast((err && err.code === 'PERMISSION_DENIED') ? 'The mess was found, but your membership could not be saved. Ask the manager to approve you.' : 'Error: ' + (err && err.message ? err.message : err), 'error');
+                this.toast(this.errText(err), 'error');
                 return;
             }
             this._userMessesCacheUpdate(mid, 'member');
             this.toast('Joined successfully!', 'success');
             document.getElementById('join-mess-code').value = '';
             this.enterMess(mid);
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
         finally { btn.textContent = 'Join Mess'; btn.disabled = false; }
     },
 
@@ -1753,7 +1753,7 @@ const App = {
                 createdAt: Date.now()
             });
             this.closeModal(); this._cacheClearAll(); this.loadNotices(); this.toast('Notice pinned!', 'success');
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async deleteNotice(key) {
@@ -1761,7 +1761,7 @@ const App = {
         try {
             await db.ref(`messes/${this.messId}/notices/${key}`).remove();
             this._cacheClearAll(); this.loadNotices(); this.toast('Notice removed', 'success');
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     shortMon(d) { return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]; },
@@ -1861,7 +1861,7 @@ const App = {
                 await db.ref(`messes/${this.messId}/bazarDuty/${dk}`).set(mid);
             }
             this.renderDutyEditor();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async clearDuty(mid) {
@@ -1874,7 +1874,7 @@ const App = {
             snap.forEach(s => { if (s.key.startsWith(month) && s.val() === mid) removals.push(db.ref(`messes/${this.messId}/bazarDuty/${s.key}`).remove()); });
             await Promise.all(removals);
             this.loadDuty(); this.toast('Dates cleared', 'success');
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     // ==================== FLAT PAGE ====================
@@ -1993,7 +1993,7 @@ const App = {
             this.toast('Member added!', 'success');
             this._cacheClearAll();
             this.loadFlat();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async editFlatMember(id, currentName) {
@@ -2006,7 +2006,7 @@ const App = {
             this._cacheClearAll();
             this.loadFlat();
             this.toast('Member renamed', 'success');
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async removeFlatMember(id) {
@@ -2041,7 +2041,7 @@ const App = {
             this._cacheClearAll();
             this.toast('Member removed with all data', 'success');
             this.loadFlat();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async deleteMessFully(messId) {
@@ -2173,7 +2173,7 @@ const App = {
             this.toast(this._currentLang === 'bn' ? 'আপনি ম্যানেজার পদ ছেড়েছেন' : 'You stepped down as manager', 'success');
             this.loadFlat();
             try { this.loadDashboard(); } catch (e) {}
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     becomeManager() {
@@ -2216,7 +2216,7 @@ const App = {
             this.toast(becoming ? 'You are now the manager!' : 'Manager changed!', 'success');
             this.loadFlat();
             try { this.loadDashboard(); } catch (e) {}
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async requestStepDown(managerUid) {
@@ -2233,7 +2233,7 @@ const App = {
             });
             this.toast('Request sent to the manager', 'success');
             this.loadFlat();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async resolveStepDownRequest(requesterUid, accept) {
@@ -2259,7 +2259,7 @@ const App = {
             this.toast(req.name ? `You stepped down as manager (${req.name} requested)` : 'You stepped down as manager', 'success');
             try { this.loadDashboard(); } catch (e) {}
             try { this.loadFlat(); } catch (e) {}
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async removePerson(uid, name) {
@@ -2285,7 +2285,7 @@ const App = {
             }
             this.toast('Removed!', 'success');
             this.loadFlat();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async loadFlatPermissions(members) {
@@ -2351,7 +2351,7 @@ const App = {
             // 'Manage Meals' is one row backed by two stored keys (mealEntry + mealEdit).
             if (key === 'mealEntry') updates[`messes/${this.messId}/permissions/${uid}/mealEdit`] = isChecked;
             await db.ref().update(updates);
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     _userPerms: {},
@@ -2404,8 +2404,17 @@ const App = {
         if (key === 'mealEntry') return !!(this._userPerms.mealEntry || this._userPerms.mealEdit);
         return !!this._userPerms[key];
     },
+    /* One message for every refused write: Firebase answers a rule block with
+       "PERMISSION_DENIED: Permission denied", which reads like a crash to users. */
+    errText(e, fallback) {
+        const msg = String((e && e.message) || '');
+        const code = String((e && e.code) || '');
+        if (/permission[-_ ]?denied/i.test(code + ' ' + msg)) return "You don't have permission to do this.";
+        if (msg) return 'Error: ' + msg;
+        return fallback || 'Something went wrong. Please try again.';
+    },
     checkPerm(key) {
-        if (!this.canDo(key)) { this.toast("You don't have permission to perform this action. Please contact the Mess Manager.", 'error', 'toast-perm'); return false; }
+        if (!this.canDo(key)) { this.toast("You don't have permission to do this.", 'error', 'toast-perm'); return false; }
         return true;
     },
 
@@ -2426,7 +2435,7 @@ const App = {
             this.messName = name.trim();
             document.getElementById('flat-mess-name').textContent = name.trim();
             this.toast('Mess name updated', 'success');
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     dk(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); },
@@ -2834,7 +2843,7 @@ https://u2l.ai/MessManager
             } catch (e) { /* member can still re-join with the mess code */ }
             this.toast(`${m.name || 'Member'} approved!`, 'success');
             this.loadDashboard();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async rejectJoin(uid) {
@@ -2850,7 +2859,7 @@ https://u2l.ai/MessManager
             try { await db.ref(`users/${uid}/messes/${this.messId}`).remove(); } catch (e) { /* best effort */ }
             this.toast('Request rejected', 'success');
             this.loadDashboard();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     goToPeopleTab() {
@@ -5641,7 +5650,7 @@ https://u2l.ai/MessManager
             this.toast(bn ? 'সংরক্ষণ হয়েছে' : 'Electricity account saved', 'success');
             if (this.currentPage === 'electricity') this.showElectricityDetails(true);
             if (this._capHttp()) this.syncElectricity(true);
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
     async toggleElectricityCard(checked) {
         if (!this.messId) return;
@@ -5655,7 +5664,7 @@ https://u2l.ai/MessManager
             const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
             if (checked && this._capHttp()) this.syncElectricity(false);
             this.toast(checked ? (bn ? 'বিদ্যুৎ কার্ড দেখানো হচ্ছে' : 'Electricity card shown') : (bn ? 'বিদ্যুৎ কার্ড লুকানো হয়েছে' : 'Electricity card hidden'), 'info');
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
     /* ---------- Live meter balance · Android only ----------
        Same collection logic as Meter Manager: the DESCO portal v2 is called
@@ -5778,7 +5787,7 @@ https://u2l.ai/MessManager
             if (this._elecDetailsOpen && this.currentPage === 'electricity') this.showElectricityDetails(true);
             if (notify) this.toast((bn ? 'ব্যালেন্স আপডেট হয়েছে ৳ ' : 'Balance updated to ৳') + this.fmtNum(cfg.balance), 'success');
         } catch (e) {
-            if (notify) this.toast(e.message || (bn ? 'ব্যালেন্স আনা যায়নি' : 'Could not fetch the balance'), 'error');
+            if (notify) this.toast(this.errText(e, bn ? 'ব্যালেন্স আনা যায়নি' : 'Could not fetch the balance'), 'error');
         } finally {
             this._elecSyncing = false;
         }
@@ -6202,7 +6211,7 @@ https://u2l.ai/MessManager
             inp.value = '';
             this._cacheClearAll();
             this.loadBazarNote();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
 
     async removeBazarNote(key) {
@@ -6210,7 +6219,7 @@ https://u2l.ai/MessManager
             await db.ref(`messes/${this.messId}/bazarNote/${key}`).remove();
             this._cacheClearAll();
             this.loadBazarNote();
-        } catch (e) { this.toast('Error: ' + e.message, 'error'); }
+        } catch (e) { this.toast(this.errText(e), 'error'); }
     },
     // ==================== ANALYSIS PAGE ====================
     async loadMonthly() {
@@ -6806,7 +6815,7 @@ https://u2l.ai/MessManager
         if (!this.currentUser?.email) return;
         auth.sendPasswordResetEmail(this.currentUser.email)
             .then(() => this.toast(this._currentLang === 'bn' ? 'রিসেট ইমেইল পাঠানো হয়েছে!' : 'Reset email sent!', 'success'))
-            .catch(e => this.toast(e.message, 'error'));
+            .catch(e => this.toast(this.errText(e), 'error'));
     },
     signOutConfirm() {
         const lang = this._currentLang || 'en';
@@ -6855,7 +6864,7 @@ https://u2l.ai/MessManager
                     this.toast('Profile picture updated!', 'success');
                 };
                 reader.readAsDataURL(file);
-            } catch (e) { this.toast('Failed to upload: ' + e.message, 'error'); }
+            } catch (e) { this.toast(this.errText(e), 'error'); }
             document.body.removeChild(input);
         };
         document.body.appendChild(input);
@@ -6907,7 +6916,7 @@ https://u2l.ai/MessManager
                 await db.ref().update(updates);
                 await this.currentUser.delete();
                 this.toast('Account deleted', 'success');
-            } catch (e) { this.toast(e.message, 'error'); }
+            } catch (e) { this.toast(this.errText(e), 'error'); }
         };
     },
     showConfirm(title, msg, cb) {
