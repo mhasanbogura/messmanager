@@ -2836,11 +2836,11 @@ img, canvas { max-width: 100%; }
 .aflat-member-item {
     display: flex; align-items: center; justify-content: space-between;
     background: #fff; border: 1px solid #dfe4ec; border-radius: 14px;
-    padding: 14px 14px; margin-bottom: 8px;
+    padding: 6px 12px; min-height: 40px; margin-bottom: 8px;
 }
 .aflat-member-item span.name { font-size: 16px; font-weight: 600; color: #d32f2f; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aflat-member-item .aflat-remove { background: none; border: none; color: #555; cursor: pointer; display: flex; padding: 4px; }
-.aflat-member-item .aflat-remove .material-icons-round { font-size: 22px; }
+.aflat-member-item .aflat-remove { background: none; border: none; color: #555; cursor: pointer; display: flex; padding: 2px; }
+.aflat-member-item .aflat-remove .material-icons-round { font-size: 20px; }
 
 .aflat-peoples-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .aflat-activity-btn {
