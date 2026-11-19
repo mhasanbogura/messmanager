@@ -3976,5 +3976,5 @@ img, canvas { max-width: 100%; }
 .ed-hist td { color: var(--text); }
 .ed-hist .ed-token { white-space: normal; word-break: break-all; line-height: 1.45; }
 .ed-hist .ed-ok { color: #1a9c53; font-weight: 700; }
-.ed-card h3.ed-blue { color: #2f7de1; }
+.ed-card h3.ed-blue { color: #2f7de1; font-size: 21px; }
 [data-theme="oled"] .ed-tab.active { background: #262626; }
