@@ -3933,7 +3933,7 @@ img, canvas { max-width: 100%; }
     box-shadow: 0 2px 8px rgba(0,0,0,.04);
 }
 .ed-card:last-child { margin-bottom: 0; }
-.ed-card h3 { margin: 0 0 10px; font-size: 17px; font-weight: 700; color: var(--text); }
+.ed-card h3 { margin: 0 0 10px; font-size: 16px; font-weight: 700; color: var(--text); }
 .ed-card h3.ed-center { text-align: center; }
 .ed-card h3.ed-left { text-align: left; margin: 0; }
 .ed-hero { padding: 16px 14px; display: flex; flex-direction: column; gap: 2px; }
@@ -3965,9 +3965,9 @@ img, canvas { max-width: 100%; }
 .ed-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
 .ed-legend .dot.round { border-radius: 50%; background: var(--text-secondary, #98a1ac); }
 .ed-tbl-scroll { overflow-x: auto; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
-.ed-hist { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.ed-hist { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
 .ed-hist th, .ed-hist td { border: 1px solid var(--card-border); padding: 7px 3px; text-align: center; vertical-align: middle; word-break: break-word; }
-.ed-hist th { color: var(--text-secondary, #8a93a0); font-weight: 600; font-size: 8.5px; text-transform: uppercase; letter-spacing: .2px; }
+.ed-hist th { color: var(--text-secondary, #8a93a0); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .2px; }
 .ed-hist th:nth-child(1), .ed-hist td:nth-child(1) { width: 27%; }
 .ed-hist th:nth-child(2), .ed-hist td:nth-child(2) { width: 21%; }
 .ed-hist th:nth-child(3), .ed-hist td:nth-child(3) { width: 14%; }
@@ -3976,5 +3976,5 @@ img, canvas { max-width: 100%; }
 .ed-hist td { color: var(--text); }
 .ed-hist .ed-token { white-space: normal; word-break: break-all; line-height: 1.45; }
 .ed-hist .ed-ok { color: #1a9c53; font-weight: 700; }
-.ed-card h3.ed-blue { color: #2f7de1; font-size: 21px; }
+.ed-card h3.ed-blue { color: #2f7de1; }
 [data-theme="oled"] .ed-tab.active { background: #262626; }
