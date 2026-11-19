@@ -2299,8 +2299,8 @@ const App = {
             if (!mids.length) { div.innerHTML = '<p class="empty-state" style="padding:20px;text-align:center;color:#999">No peoples to set permissions for</p>'; return; }
             const pSnap = await db.ref(`messes/${this.messId}/permissions`).once('value');
             const perms = pSnap.val() || {};
-            const permKeys = ['bazarEntry', 'moneyManage', 'mealEntry', 'togglePerms', 'manage'];
-            const permLabels = ['Manage Expenses', 'Manage Money', 'Manage Meals', 'Manage Permissions', 'Manage People & Members'];
+            const permKeys = ['bazarEntry', 'moneyManage', 'mealEntry', 'togglePerms', 'manage', 'elecManage'];
+            const permLabels = ['Manage Expenses', 'Manage Money', 'Manage Meals', 'Manage Permissions', 'Manage People & Members', 'Manage Electricity'];
             const colors = ['#E53935','#1565C0','#2E7D32','#FF9800','#7B1FA2','#00838F'];
             const iAmAdmin = this.userRole === 'admin';
             const iCanToggle = iAmAdmin || this.canDo('togglePerms');
@@ -2833,7 +2833,7 @@ https://u2l.ai/MessManager
             const m = mSnap.val() || {};
             const updates = {};
             updates[`messes/${this.messId}/members/${uid}/status`] = 'active';
-                updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: true, mealEntry: false, mealEdit: false, moneyManage: false, togglePerms: false, manage: false };
+                updates[`messes/${this.messId}/permissions/${uid}`] = { bazarEntry: true, mealEntry: false, mealEdit: false, moneyManage: false, togglePerms: false, manage: false, elecManage: false };
             await db.ref().update(updates);
             // Give the member their mess index so they land straight in the app.
             // Best effort: older/stricter rules may block an admin from writing
@@ -5566,12 +5566,14 @@ https://u2l.ai/MessManager
         tip.style.top = Math.round(top) + 'px';
     },
     async refreshElectricityDetails() {
+        if (!this.checkPerm('elecManage')) return;
         this._elecUsageTab = 'daily';
         this._elecUsageMetric = 'taka';
         this._elecUsageSel = null;
         await this.syncElectricity(true);
     },
     async manageElectricity() {
+        if (!this.checkPerm('elecManage')) return;
         this._elecDetailsOpen = false;
         const cfg = this._elecCfg || await this.loadElectricity();
         const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
@@ -5613,6 +5615,7 @@ https://u2l.ai/MessManager
     },
     async saveElectricity() {
         if (!this.messId) return;
+        if (!this.checkPerm('elecManage')) return;
         const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
         const provider = this._elecProvider === 'nesco' ? 'nesco' : 'desco';
         const number = this._toEnDigits((document.getElementById('elec-number').value || '').trim()).replace(/\D/g, '');
@@ -5654,6 +5657,7 @@ https://u2l.ai/MessManager
     },
     async toggleElectricityCard(checked) {
         if (!this.messId) return;
+        if (!this.checkPerm('elecManage')) return;
         this._elecCfg = Object.assign(this._elecDefault(), this._elecCfg || {}, { enabled: !!checked, userEnabled: !!checked });
         this.applyElectricityCard();
         try {
@@ -5741,6 +5745,7 @@ https://u2l.ai/MessManager
     },
     _maybeSyncElectricity(force) {
         if (!this.messId || !this._capHttp()) return;
+        if (!this.canDo('elecManage')) return;
         const cfg = this._elecCfg;
         if (!cfg || !cfg.enabled || !cfg.number || this._elecSyncing) return;
         if (!force && cfg.updatedAt && Date.now() - cfg.updatedAt < 10 * 60 * 1000) return;
