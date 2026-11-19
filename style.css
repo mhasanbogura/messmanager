@@ -3819,12 +3819,12 @@ img, canvas { max-width: 100%; }
 /* Mess page "ADD": same pill as the floating Add buttons, and the row can
    never push it off the right edge (the input's intrinsic width used to win). */
 .aflat-add-row { gap: 10px; }
-.aflat-input-wrap { min-width: 0; min-height: 54px; }
+.aflat-input-wrap { min-width: 0; min-height: 40px; }
 .aflat-input-wrap input { min-width: 0; }
 .aflat-add-btn {
     flex: 0 0 auto; white-space: nowrap;
-    padding: 16px 28px; min-height: 54px; border-radius: 14px;
-    font-size: 17px; letter-spacing: .2px;
+    padding: 9px 18px; min-height: 40px; border-radius: 14px;
+    font-size: 14px; letter-spacing: .2px;
 }
 /* Every floating "Add" pill: identical content layout (icon + label) and a
    drag handle. Position is handled by App._initAddPillDrag() once dragged. */
