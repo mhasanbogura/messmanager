@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.27 (build 814)',
+        prof_version:'Version 1.6.28 (build 817)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.27 (বিল্ড 814)',
+            prof_version:'ভার্সন 1.6.28 (বিল্ড 817)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -1626,6 +1626,10 @@ const App = {
         const savedPage = localStorage.getItem('mess_currentPage');
         const validPages = ['dashboard','members','bazaar','meals','balance','profile'];
         this.navigate(validPages.includes(savedPage) ? savedPage : 'dashboard');
+
+        // Refresh the live meter balance/history on every app open (and when
+        // the app comes back to the foreground).
+        try { this._refreshElectricity(true); } catch (e) {}
 
         // Boot update check (once per launch, after the UI is up) — shows the
         // forced, non-skippable update dialog when a newer build is on Drive.
@@ -5084,10 +5088,13 @@ https://u2l.ai/MessManager
             duty: () => this.loadDuty(),
             costtrash: () => this.loadCostTrash(),
             deptrash: () => this.loadDepTrash(),
+            electricity: () => this.showElectricityDetails(true),
         };
         if (loaders[page]) {
             try { loaders[page](); } catch (e) {}
         }
+        // Pull-to-refresh also updates the live meter balance and recharge history.
+        try { this._refreshElectricity(true); } catch (e) {}
     },
     _hintOffline() {
         if (!navigator.onLine) {
@@ -5773,6 +5780,17 @@ https://u2l.ai/MessManager
         if (!cfg || !cfg.enabled || !cfg.number || this._elecSyncing) return;
         if (!force && cfg.updatedAt && Date.now() - cfg.updatedAt < 10 * 60 * 1000) return;
         this.syncElectricity(false);
+    },
+    // App open / resume / pull-to-refresh: make sure the meter balance and the
+    // recharge history are fetched even when the 10-minute throttle has not
+    // expired yet.
+    async _refreshElectricity(force) {
+        if (!this.messId) return;
+        if (!this._capHttp() || !this.canDo('elecManage')) return;
+        if (!this._elecCfg) {
+            try { await this.loadElectricity(); } catch (e) { /* offline */ }
+        }
+        this._maybeSyncElectricity(!!force);
     },
     async syncElectricity(notify) {
         const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
