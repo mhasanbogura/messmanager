@@ -4012,6 +4012,7 @@ img, canvas { max-width: 100%; }
     --card-edge: #3f3f3f;
     --card-shadow-mm: 0 1px 3px rgba(0,0,0,.6), 0 4px 14px rgba(0,0,0,.5);
 }
+.adash-mess-card, .adash-notice, .adash-today,
 .item-card, .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card,
 .aflat-card, .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card,
 .abazar-day-card, .abn-info-card, .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card,
@@ -4023,13 +4024,13 @@ img, canvas { max-width: 100%; }
 }
 /* Themed card overrides below set their own #1a1a1a edge; keep the shared
    edge colour winning so every card matches in dark and OLED too. */
-[data-theme="dark"] :is(.item-card,
+[data-theme="dark"] :is(.adash-mess-card, .adash-notice, .adash-today, .item-card,
     .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card, .aflat-card,
     .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card, .abazar-day-card, .abn-info-card,
     .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card, .am-card, .am-stat-card,
     .aprof-card, .profile-card, .profile-info-card, .aduty-banner, .aduty-card, .anotice-card,
     .aam-card, .ed-card),
-[data-theme="oled"] :is(.item-card,
+[data-theme="oled"] :is(.adash-mess-card, .adash-notice, .adash-today, .item-card,
     .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card, .aflat-card,
     .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card, .abazar-day-card, .abn-info-card,
     .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card, .am-card, .am-stat-card,
@@ -4039,4 +4040,9 @@ img, canvas { max-width: 100%; }
     border-width: 1.5px;
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
+}
+/* Breakfast / Lunch / Dinner keep their compact size but take the same Meter
+   Manager edge as the card they sit in. */
+html[data-theme] :is(.adash-meal, .adash-meal.breakfast, .adash-meal.lunch, .adash-meal.dinner) {
+    border-color: var(--card-edge);
 }
