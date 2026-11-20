@@ -2455,12 +2455,16 @@ select.input-sm { cursor: pointer; }
 .aprof-uid { display: flex; align-items: center; gap: 6px; cursor: pointer; color: #888; font-size: 13px; }
 .aprof-uid .material-icons-round { color: #aaa; }
 .aprof-section { margin: 12px 0 0; }
-.aprof-section-title { font-size: 12px; font-weight: 600; color: var(--text); opacity: .5; padding: 8px 4px 4px; margin-bottom: 4px; letter-spacing: .5px; text-align: center; }
+.aprof-section-title { font-size: 11px; font-weight: 700; color: #111111; letter-spacing: 1.2px; text-transform: uppercase; text-align: center; padding: 0; margin: 22px 0 8px; }
 .aprof-row {
     display: flex; align-items: center; gap: 12px;
-    padding: 14px; border-top: 1px solid var(--card-border); cursor: pointer;
+    padding: 14px; position: relative; cursor: pointer;
 }
-.aprof-row:first-child { border-top: none; }
+/* Inset row separator (does not reach the card edges) */
+.aprof-row + .aprof-row::before {
+    content: ''; position: absolute; top: 0; left: 14px; right: 14px;
+    border-top: 1px solid var(--card-border, #dfe4ec);
+}
 .aprof-row .material-icons-round:first-child { font-size: 22px; color: var(--text); opacity: .5; flex-shrink: 0; }
 .aprof-label { flex: 1; font-size: 15px; color: var(--text); }
 .aprof-chevron { font-size: 20px !important; color: var(--text) !important; opacity: .3 !important; flex-shrink: 0; }
@@ -2516,8 +2520,8 @@ select.input-sm { cursor: pointer; }
 [data-theme="dark"] .aprof-card { background: #000000; border-color: #1a1a1a; }
 [data-theme="dark"] .aprof-info h3, [data-theme="dark"] .aprof-label { color: #e8ebf1; }
 [data-theme="dark"] .aprof-info p, [data-theme="dark"] .aprof-desc-inline, [data-theme="dark"] .aprof-value { color: #9aa4b5; }
-[data-theme="dark"] .aprof-section-title { color: #6b7280; }
-[data-theme="dark"] .aprof-row { border-color: #1a1a1a; }
+[data-theme="dark"] .aprof-section-title { color: #ffffff; }
+[data-theme="dark"] .aprof-row + .aprof-row::before { border-top-color: #1a1a1a; }
 [data-theme="dark"] .aprof-row .material-icons-round:first-child { color: #9aa4b5; }
 [data-theme="dark"] .aprof-row .material-icons-round:last-child { color: #4b5563; }
 [data-theme="dark"] .toggle-slider { background: #ccc; }
@@ -2528,8 +2532,8 @@ select.input-sm { cursor: pointer; }
 [data-theme="oled"] .aprof-card { background: #000000; border-color: #1a1a1a; }
 [data-theme="oled"] .aprof-info h3, [data-theme="oled"] .aprof-label { color: #e8ebf1; }
 [data-theme="oled"] .aprof-info p, [data-theme="oled"] .aprof-desc-inline, [data-theme="oled"] .aprof-value { color: #9aa4b5; }
-[data-theme="oled"] .aprof-section-title { color: #6b7280; }
-[data-theme="oled"] .aprof-row { border-color: #1a1a1a; }
+[data-theme="oled"] .aprof-section-title { color: #ffffff; }
+[data-theme="oled"] .aprof-row + .aprof-row::before { border-top-color: #1a1a1a; }
 [data-theme="oled"] .aprof-row .material-icons-round:first-child { color: #9aa4b5; }
 [data-theme="oled"] .aprof-row .material-icons-round:last-child { color: #4b5563; }
 [data-theme="oled"] .toggle-slider { background: #ccc; }
@@ -3252,8 +3256,8 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .aprof-info h3 { color: #e8ebf1; }
 [data-theme="oled"] .aprof-info p { color: #999; }
 [data-theme="oled"] .aprof-label { color: #e8ebf1; }
-[data-theme="oled"] .aprof-section-title { color: #666; }
-[data-theme="oled"] .aprof-row { border-color: #1a1a1a; }
+[data-theme="oled"] .aprof-section-title { color: #ffffff; }
+[data-theme="oled"] .aprof-row + .aprof-row::before { border-top-color: #1a1a1a; }
 [data-theme="oled"] .aprof-row .material-icons-round:first-child { color: #999; }
 [data-theme="oled"] .aprof-row .material-icons-round:last-child { color: #555; }
 [data-theme="oled"] .toggle-slider { background: #ccc; }
@@ -3905,7 +3909,7 @@ img, canvas { max-width: 100%; }
 #dash-elec-balance.low { color: #e53935; }
 
 /* Electricity card header refresh */
-.adash-elec-head { justify-self: stretch; display: flex; align-items: center; gap: 4px; }
+.adash-elec-head, .adash-fin-head { justify-self: stretch; display: flex; align-items: center; gap: 4px; }
 .adash-elec-refresh {
     margin-left: auto; display: flex; align-items: center; justify-content: center;
     width: 26px; height: 26px; padding: 0; border: none; border-radius: 7px;
@@ -4012,7 +4016,9 @@ img, canvas { max-width: 100%; }
     --card-edge: #3f3f3f;
     --card-shadow-mm: 0 1px 3px rgba(0,0,0,.6), 0 4px 14px rgba(0,0,0,.5);
 }
-.adash-mess-card, .adash-notice,
+.adash-finance-card, .adash-join-card, .adash-duo-box,
+.adash-mess-card, .adash-notice, .adash-today,
+.abazar-flat-item, .abazar-item,
 .item-card, .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card,
 .aflat-card, .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card,
 .abazar-day-card, .abn-info-card, .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card,
@@ -4024,13 +4030,13 @@ img, canvas { max-width: 100%; }
 }
 /* Themed card overrides below set their own #1a1a1a edge; keep the shared
    edge colour winning so every card matches in dark and OLED too. */
-[data-theme="dark"] :is(.adash-mess-card, .adash-notice, .item-card,
+[data-theme="dark"] :is(.adash-finance-card, .adash-join-card, .adash-duo-box, .adash-mess-card, .adash-notice, .adash-today, .abazar-flat-item, .abazar-item, .item-card,
     .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card, .aflat-card,
     .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card, .abazar-day-card, .abn-info-card,
     .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card, .am-card, .am-stat-card,
     .aprof-card, .profile-card, .profile-info-card, .aduty-banner, .aduty-card, .anotice-card,
     .aam-card, .ed-card),
-[data-theme="oled"] :is(.adash-mess-card, .adash-notice, .item-card,
+[data-theme="oled"] :is(.adash-finance-card, .adash-join-card, .adash-duo-box, .adash-mess-card, .adash-notice, .adash-today, .abazar-flat-item, .abazar-item, .item-card,
     .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card, .aflat-card,
     .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card, .abazar-day-card, .abn-info-card,
     .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card, .am-card, .am-stat-card,
@@ -4042,11 +4048,75 @@ img, canvas { max-width: 100%; }
     box-shadow: var(--card-shadow-mm);
 }
 /* The Breakfast / Lunch / Dinner cells and the inner number boxes of the
-   Meal, Utility and Electricity cards take the Meter Manager frame; the card
-   that wraps them keeps its original lighter treatment. */
+   Meal, Utility and Electricity cards take the Meter Manager frame as well. */
 html[data-theme] :is(.adash-meal, .adash-meal.breakfast, .adash-meal.lunch, .adash-meal.dinner,
-    .adash-fin-box, .adash-analyse) {
+    .adash-fin-box, .adash-analyse, .adash-mess-box, .adash-table-wrap, .adash-share,
+    .aflat-card-box, .aflat-info-box, .aflat-member-item, .aflat-people-item) {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
 }
+/* Round icon buttons (edit / share) take the same edge as the cards. */
+html[data-theme] :is(.adash-edit, .aflat-icon-btn) {
+    border: 1.5px solid var(--card-edge);
+}
+/* Toolbar pills and filter / view buttons on Expense List and Money
+   Management use the card frame as well. */
+html[data-theme] :is(.abazar-filter-btn, .abazar-view-btn) {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+}
+/* Filter / sort popup and each option inside it use the card frame. */
+html[data-theme] .abazar-member-dropdown {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+    padding: 6px;
+}
+html[data-theme] .abazar-member-dropdown-item {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+    padding: 9px 12px;
+    margin-bottom: 6px;
+}
+html[data-theme] .abazar-member-dropdown-item:last-child { margin-bottom: 0; }
+/* Add Member input box and its ADD button use the card frame as well. */
+html[data-theme] :is(.aflat-input-wrap, .aflat-add-btn) {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+}
+/* Input boxes, chips, tabs and action buttons on the Add Meal, Add Cost and
+   Add Deposit pages use the same frame as the Add Member box. */
+html[data-theme] :is(.bz-input-wrap, .bz-qty-wrap, .bz-add-more, .bz-tab, .aam-tab,
+    .dep-date, .dep-chip, .dep-input-wrap) {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+}
+html[data-theme] :is(.bz-input-wrap, .bz-qty-wrap, .dep-date, .dep-input-wrap) {
+    padding: 8px 12px;
+    background: var(--card);
+}
+/* Month / unit picker popup and its options use the same frame. */
+html[data-theme] .bz-unit-menu {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+    padding: 6px;
+    gap: 6px;
+    overflow: visible;
+}
+html[data-theme] .bz-unit-opt {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+    padding: 8px 12px;
+}
+html[data-theme] .bz-unit-opt.active { border-color: var(--card-edge); }
+/* The Manager / Current month boxes sit side by side inside the mess card:
+   drop the shared outline and divider so each box reads as its own card. */
+.adash-mess-grid { border: none; border-radius: 0; overflow: visible; gap: 6px; }
+.adash-mess-box + .adash-mess-box { border-left: none; }

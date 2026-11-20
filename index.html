@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Mess Manager</title>
     <link rel="icon" type="image/png" href="app-icon.png?v=1.4.40">
-    <link rel="stylesheet" href="style.css?v=202611201800">
+    <link rel="stylesheet" href="style.css?v=202611202030">
     <link href="fonts/material-icons.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -227,7 +227,7 @@
 
                 <div class="adash-finance-card">
                 <div class="adash-finance">
-                    <div class="adash-fin-label" onclick="App.navigate('meal')"><span class="material-icons-round" style="font-size:18px;color:var(--primary)">lunch_dining</span><strong data-lang-key="dash_meal">Meal</strong></div>
+                    <div class="adash-fin-label adash-fin-head" onclick="App.navigate('meal')"><span class="material-icons-round" style="font-size:18px;color:var(--primary)">lunch_dining</span><strong data-lang-key="dash_meal">Meal</strong><button class="adash-elec-refresh" onclick="event.stopPropagation();App.refreshDashboardTotals()" title="Refresh"><span class="material-icons-round">refresh</span></button></div>
                     <div class="adash-fin-box"><small data-lang-key="dash_deposit">Deposit</small><strong id="dash-deposit">৳ 0</strong></div>
                     <div class="adash-fin-box"><small data-lang-key="dash_balance">Balance</small><strong id="dash-balance" class="pos">৳ 0</strong></div>
                     <div class="adash-fin-box"><small data-lang-key="dash_expense_per_meal">Expense per Meal</small><strong id="dash-rate">৳ 0</strong></div>
@@ -235,7 +235,7 @@
                 </div>
                 <div class="adash-finance-card" style="margin-top:4px">
                 <div class="adash-finance">
-                    <div class="adash-fin-label" onclick="App.navigate('cost')"><span class="material-icons-round" style="font-size:18px;color:var(--primary)">receipt_long</span><strong data-lang-key="dash_utility">Utility</strong></div>
+                    <div class="adash-fin-label adash-fin-head" onclick="App.navigate('cost')"><span class="material-icons-round" style="font-size:18px;color:var(--primary)">receipt_long</span><strong data-lang-key="dash_utility">Utility</strong><button class="adash-elec-refresh" onclick="event.stopPropagation();App.refreshDashboardTotals()" title="Refresh"><span class="material-icons-round">refresh</span></button></div>
                     <div class="adash-fin-box"><small data-lang-key="dash_deposit">Deposit</small><strong id="dash-util-deposit">৳ 0</strong></div>
                     <div class="adash-fin-box"><small data-lang-key="dash_balance">Balance</small><strong id="dash-util-balance" class="pos">৳ 0</strong></div>
                     <div class="adash-analyse" onclick="App.navigate('monthly')"><span class="material-icons-round">auto_graph</span> <span data-lang-key="dash_analyse">Analyze</span></div>
@@ -594,8 +594,8 @@
                     </div>
                 </div>
                 <div class="aprof-section">
+                    <div class="aprof-section-title" data-lang-key="prof_general">GENERAL</div>
                     <div class="aprof-card">
-                        <div class="aprof-section-title" data-lang-key="prof_general">GENERAL</div>
                         <div class="aprof-row">
                             <span class="material-icons-round">phone_android</span>
                             <div class="aprof-text">
@@ -630,8 +630,8 @@
                         </div>
                     </div>
                 <div class="aprof-section">
+                    <div class="aprof-section-title" data-lang-key="prof_account">ACCOUNT</div>
                     <div class="aprof-card">
-                        <div class="aprof-section-title" data-lang-key="prof_account">ACCOUNT</div>
                         <div class="aprof-row" onclick="App.manageElectricity()">
                             <span class="material-icons-round">bolt</span>
                             <span class="aprof-label" data-lang-key="prof_manage_elec">Add DESCO/NESCO Account</span>
@@ -660,8 +660,8 @@
                     </div>
                 </div>
                 <div class="aprof-section">
+                    <div class="aprof-section-title" data-lang-key="prof_more">MORE</div>
                     <div class="aprof-card">
-                        <div class="aprof-section-title" data-lang-key="prof_more">MORE</div>
                         <div class="aprof-row" id="row-update-app" onclick="App.checkUpdate()" style="display: flex !important;">
                             <span class="material-icons-round">system_update</span>
                             <span class="aprof-label" data-lang-key="prof_update">Update App</span>
