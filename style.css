@@ -3994,3 +3994,53 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .ed-hist tr.hist-month-total td { background: #212121; color: #f2f5fa; }
 .ed-hist tr.hist-month-total td:first-child { text-align: left; padding-left: 12px; }
 [data-theme="oled"] .ed-tab.active { background: #262626; }
+
+/* ==================== CARD FRAME: Meter Manager look ====================
+   Every page card shares one frame so Dashboard, Mess, Expense, Meal, Money,
+   Notices, Duty, Profile and Electricity read the same as Meter Manager's
+   .card: a 1.5px edge, 14px radius and the soft two-layer shadow. Inner
+   sub-boxes (fin boxes, grid cells) keep their lighter treatment. */
+:root {
+    --card-edge: #c7d0de;
+    --card-shadow-mm: 0 1px 3px rgba(20,24,31,.08), 0 4px 14px rgba(20,24,31,.06);
+}
+[data-theme="dark"] {
+    --card-edge: #4a5878;
+    --card-shadow-mm: 0 1px 3px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35);
+}
+[data-theme="oled"] {
+    --card-edge: #3f3f3f;
+    --card-shadow-mm: 0 1px 3px rgba(0,0,0,.6), 0 4px 14px rgba(0,0,0,.5);
+}
+.adash-mess-card, .adash-join-card, .adash-finance-card,
+.dash-mess-card, .dash-today-card, .dash-finance-row, .dash-member-stats, .dash-member-card,
+.item-card, .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card,
+.aflat-card, .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card,
+.abazar-day-card, .abn-info-card, .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card,
+.am-card, .am-stat-card, .aprof-card, .profile-card, .profile-info-card,
+.aduty-banner, .aduty-card, .anotice-card, .aam-card, .ed-card {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+}
+/* Themed card overrides below set their own #1a1a1a edge; keep the shared
+   edge colour winning so every card matches in dark and OLED too. */
+[data-theme="dark"] :is(.adash-mess-card, .adash-join-card, .adash-finance-card, .dash-mess-card,
+    .dash-today-card, .dash-finance-row, .dash-member-stats, .dash-member-card, .item-card,
+    .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card, .aflat-card,
+    .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card, .abazar-day-card, .abn-info-card,
+    .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card, .am-card, .am-stat-card,
+    .aprof-card, .profile-card, .profile-info-card, .aduty-banner, .aduty-card, .anotice-card,
+    .aam-card, .ed-card),
+[data-theme="oled"] :is(.adash-mess-card, .adash-join-card, .adash-finance-card, .dash-mess-card,
+    .dash-today-card, .dash-finance-row, .dash-member-stats, .dash-member-card, .item-card,
+    .notice-item, .report-content, .analysis-card, .analysis-stat-card, .collapse-card, .aflat-card,
+    .aflat-perm-card, .flat-mess-card, .flat-people-card, .perm-card, .abazar-day-card, .abn-info-card,
+    .amealhist-card, .ameal-add-card, .ameal-day-card, .meal-summary-card, .am-card, .am-stat-card,
+    .aprof-card, .profile-card, .profile-info-card, .aduty-banner, .aduty-card, .anotice-card,
+    .aam-card, .ed-card) {
+    border-color: var(--card-edge);
+    border-width: 1.5px;
+    border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+}
