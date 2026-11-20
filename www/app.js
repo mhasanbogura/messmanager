@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.41 (build 856)',
+        prof_version:'Version 1.6.42 (build 859)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.41 (বিল্ড 856)',
+            prof_version:'ভার্সন 1.6.42 (বিল্ড 859)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -5852,12 +5852,23 @@ https://u2l.ai/MessManager
         if (!force && cfg.updatedAt && Date.now() - cfg.updatedAt < 10 * 60 * 1000) return;
         this.syncElectricity(false);
     },
+    // The mess id only arrives once sign-in/session restore has finished, so a
+    // refresh tap right after the app opens used to be dropped silently. Wait
+    // for it (bounded) instead of returning early.
+    async _waitForMess(maxMs) {
+        const limit = maxMs || 6000;
+        const t0 = Date.now();
+        while (!this.messId && Date.now() - t0 < limit) {
+            await new Promise(r => setTimeout(r, 120));
+        }
+        return !!this.messId;
+    },
     // App open / resume / pull-to-refresh: make sure the meter balance and the
     // recharge history are fetched even when the 10-minute throttle has not
     // expired yet. Any member of the mess can refresh — no permission needed.
     async _refreshElectricity(force) {
-        if (!this.messId) return;
         if (!this._capHttp()) return;
+        if (!await this._waitForMess()) return;
         if (!this._elecCfg) {
             try { await this.loadElectricity(); } catch (e) { /* offline */ }
         }
@@ -5865,7 +5876,13 @@ https://u2l.ai/MessManager
     },
     async syncElectricity(notify) {
         const bn = (localStorage.getItem('mess_lang') || 'en') === 'bn';
-        if (!this.messId) return;
+        if (!await this._waitForMess()) {
+            if (notify) this.toast(bn ? 'এখনও লোড হচ্ছে, আবার চেষ্টা করুন' : 'Still loading — try again', 'info');
+            return;
+        }
+        if (!this._elecCfg) {
+            try { await this.loadElectricity(); } catch (e) { /* offline */ }
+        }
         const cfg = this._elecCfg;
         if (!cfg || !cfg.number) {
             if (notify) this.toast(bn ? 'প্রথমে অ্যাকাউন্ট যোগ করুন' : 'Add the account first', 'error');
@@ -5875,7 +5892,10 @@ https://u2l.ai/MessManager
             if (notify) this.toast(bn ? 'লাইভ ব্যালেন্স শুধু অ্যান्ড্রয়েড অ্যাপে পাওয়া যায়' : 'Live balance is available in the Android app', 'info');
             return;
         }
-        if (this._elecSyncing) return;
+        if (this._elecSyncing) {
+            if (notify) this.toast(bn ? 'ব্যালেন্স আপডেট হচ্ছে...' : 'Updating Balance...', 'info');
+            return;
+        }
         this._elecSyncing = true;
         if (notify) this.toast(bn ? 'ব্যালেন্স আপডেট হচ্ছে...' : 'Updating Balance...', 'info');
         try {
