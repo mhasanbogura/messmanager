@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.30 (build 823)',
+        prof_version:'Version 1.6.31 (build 826)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.30 (বিল্ড 823)',
+            prof_version:'ভার্সন 1.6.31 (বিল্ড 826)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -5582,7 +5582,6 @@ https://u2l.ai/MessManager
         tip.style.top = Math.round(top) + 'px';
     },
     async refreshElectricityDetails() {
-        if (!this.checkPerm('elecManage')) return;
         this._elecUsageTab = 'daily';
         this._elecUsageMetric = 'taka';
         this._elecUsageSel = null;
@@ -5784,7 +5783,6 @@ https://u2l.ai/MessManager
     },
     _maybeSyncElectricity(force) {
         if (!this.messId || !this._capHttp()) return;
-        if (!this.canDo('elecManage')) return;
         const cfg = this._elecCfg;
         if (!cfg || !cfg.enabled || !cfg.number || this._elecSyncing) return;
         if (!force && cfg.updatedAt && Date.now() - cfg.updatedAt < 10 * 60 * 1000) return;
@@ -5792,10 +5790,10 @@ https://u2l.ai/MessManager
     },
     // App open / resume / pull-to-refresh: make sure the meter balance and the
     // recharge history are fetched even when the 10-minute throttle has not
-    // expired yet.
+    // expired yet. Any member of the mess can refresh — no permission needed.
     async _refreshElectricity(force) {
         if (!this.messId) return;
-        if (!this._capHttp() || !this.canDo('elecManage')) return;
+        if (!this._capHttp()) return;
         if (!this._elecCfg) {
             try { await this.loadElectricity(); } catch (e) { /* offline */ }
         }
