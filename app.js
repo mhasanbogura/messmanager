@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.32 (build 829)',
+        prof_version:'Version 1.6.33 (build 832)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.32 (বিল্ড 829)',
+            prof_version:'ভার্সন 1.6.33 (বিল্ড 832)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -5305,13 +5305,18 @@ https://u2l.ai/MessManager
                 <section class="ed-card">
                     <h3 class="ed-center">Recharge History</h3>
                     <div class="ed-tbl-scroll"><table class="ed-hist">
-                        <thead><tr><th>Date</th><th>Token</th><th>Total</th><th>Energy Amount</th><th>Energy (kWh)</th></tr></thead>
+                        <thead><tr><th>Date</th><th>Token</th><th>Total</th><th>Energy Amount</th><th>Energy (kWh)</th><th>Meter Rent</th><th>Demand Charge</th><th>VAT</th><th>Rebate</th><th>Status</th></tr></thead>
                         <tbody>${history.slice(0, 60).map(r => `<tr>
                             <td>${this.esc(this._histDateLong(r.date))}</td>
                             <td class="ed-token">${this._tokenLines(r.token)}</td>
                             <td><strong>৳${this._moneyShort(r.total)}</strong></td>
                             <td>৳${this._money(r.amount)}</td>
                             <td>${this._units(Number(r.kwh) || this._descoKwh(r.amount))}</td>
+                            <td>৳${this._moneyShort(r.rent)}</td>
+                            <td>৳${this._moneyShort(r.charge)}</td>
+                            <td>৳${this._moneyShort(r.vat)}</td>
+                            <td>৳${this._moneyShort(r.rebate)}</td>
+                            <td class="${/success/i.test(String(r.status || '')) ? 'ed-ok' : (/fail/i.test(String(r.status || '')) ? 'ed-fail' : '')}">${this.esc(r.status || '—')}</td>
                         </tr>`).join('')}</tbody>
                     </table></div>
                 </section>`;
