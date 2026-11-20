@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.34 (build 835)',
+        prof_version:'Version 1.6.35 (build 838)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.34 (বিল্ড 835)',
+            prof_version:'ভার্সন 1.6.35 (বিল্ড 838)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -5307,7 +5307,7 @@ https://u2l.ai/MessManager
                     <div class="ed-tbl-scroll"><table class="ed-hist">
                         <thead><tr><th>Date</th><th>Token</th><th>Total</th><th>Energy Amount</th><th>Energy (kWh)</th><th>Meter Rent</th><th>Demand Charge</th><th>VAT</th><th>Rebate</th><th>Status</th></tr></thead>
                         <tbody>${history.slice(0, 60).map(r => `<tr>
-                            <td>${this.esc(this._histDateLong(r.date))}</td>
+                            <td class="ed-date">${this._histDateLong(r.date)}</td>
                             <td class="ed-token">${this._tokenLines(r.token)}</td>
                             <td><strong>৳${this._moneyShort(r.total)}</strong></td>
                             <td>৳${this._money(r.amount)}</td>
@@ -5753,11 +5753,11 @@ https://u2l.ai/MessManager
         if (isNaN(d.getTime())) return String(v);
         return d.toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
     },
-    // "Monday, 2 November 2026, 9:09:58 AM"
+    // Fixed 4-line date cell: "Wednesday," / "18 November" / "2026," / "2:08:27 PM"
     _histDateLong(v) {
         if (!v) return '—';
         const d = new Date(String(v).replace(' ', 'T'));
-        if (isNaN(d.getTime())) return String(v);
+        if (isNaN(d.getTime())) return this.esc(String(v));
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         let h = d.getHours();
@@ -5765,7 +5765,7 @@ https://u2l.ai/MessManager
         h = h % 12 || 12;
         const mm = String(d.getMinutes()).padStart(2, '0');
         const ss = String(d.getSeconds()).padStart(2, '0');
-        return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${h}:${mm}:${ss} ${ap}`;
+        return `${days[d.getDay()]},<br>${d.getDate()} ${months[d.getMonth()]}<br>${d.getFullYear()},<br>${h}:${mm}:${ss} ${ap}`;
     },
     // Token printed in 4-digit lines, like the meter receipt.
     _tokenLines(token) {

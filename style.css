@@ -3980,6 +3980,7 @@ img, canvas { max-width: 100%; }
 .ed-hist th:nth-child(10), .ed-hist td:nth-child(10) { width: 8%; }
 .ed-hist td { color: var(--text); }
 .ed-hist .ed-token { white-space: normal; word-break: break-all; line-height: 1.45; }
+.ed-hist .ed-date { line-height: 1.35; }
 .ed-hist .ed-ok { color: #1a9c53; font-weight: 700; }
 .ed-hist .ed-fail { color: #e53935; font-weight: 700; }
 [data-theme="oled"] .ed-tab.active { background: #262626; }
