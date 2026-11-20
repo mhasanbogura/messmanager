@@ -3928,15 +3928,17 @@ img, canvas { max-width: 100%; }
 
 /* Electricity detail sheet (Meter Manager style) */
 .ed-card {
-    background: var(--card-solid); border: 1px solid var(--card-border);
-    border-radius: 16px; padding: 14px 14px 12px; margin-bottom: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    background: var(--card-solid); border: 1.5px solid #c7d0de;
+    border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(20,24,31,.08), 0 4px 14px rgba(20,24,31,.06);
 }
+[data-theme="dark"] .ed-card { border-color: #4a5878; }
+[data-theme="oled"] .ed-card { border-color: #3f3f3f; }
 .ed-card:last-child { margin-bottom: 0; }
-.ed-card h3 { margin: 0 0 10px; font-size: 16px; font-weight: 700; color: var(--text); }
+.ed-card h3 { margin: 0 0 12px; font-size: 15px; font-weight: 700; color: var(--text); text-align: center; }
 .ed-card h3.ed-center { text-align: center; }
 .ed-card h3.ed-left { text-align: left; margin: 0; }
-.ed-hero { padding: 16px 14px; display: flex; flex-direction: column; gap: 2px; }
+.ed-hero { padding: 22px 18px; display: flex; flex-direction: column; gap: 6px; }
 .ed-hero-top { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--text-secondary, #8a93a0); }
 .ed-hero-top b { color: var(--primary); letter-spacing: .5px; }
 .ed-balance { font-size: 34px; font-weight: 800; letter-spacing: -.5px; color: var(--text); line-height: 1.15; margin: 4px 0 6px; }
@@ -3949,7 +3951,9 @@ img, canvas { max-width: 100%; }
 .ed-list td:nth-child(2) { font-weight: 600; color: var(--text); word-break: break-word; }
 .ed-list td.ed-right-num { text-align: right; }
 .ed-usage-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.ed-tabs { display: inline-flex; gap: 3px; padding: 3px; border-radius: 999px; background: var(--bg); }
+.ed-tabs { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: #eef1f6; }
+[data-theme="dark"] .ed-tabs { background: #232a38; }
+[data-theme="oled"] .ed-tabs { background: #141414; }
 .ed-metric { margin-bottom: 10px; }
 .ed-tab { border: 0; background: transparent; color: var(--text-secondary, #5b6472); font-family: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px; cursor: pointer; }
 .ed-tab.active { background: var(--card-solid); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
@@ -3983,7 +3987,10 @@ img, canvas { max-width: 100%; }
 .ed-hist .ed-date { line-height: 1.35; }
 .ed-hist .ed-ok { color: #1a9c53; font-weight: 700; }
 .ed-hist .ed-fail { color: #e53935; font-weight: 700; }
-/* Monthly subtotal row in Recharge History (Meter Manager style). */
-.ed-hist tr.hist-month-total td { background: var(--bg); font-weight: 700; }
-.ed-hist tr.hist-month-total td:first-child { text-align: left; padding-left: 10px; }
+/* Monthly subtotal row in Recharge History (Meter Manager style). Uses the
+   Meter Manager --surface-2 tone so it reads as a band in every theme. */
+.ed-hist tr.hist-month-total td { background: #eef1f6; font-weight: 700; }
+[data-theme="dark"] .ed-hist tr.hist-month-total td { background: #232a38; }
+[data-theme="oled"] .ed-hist tr.hist-month-total td { background: #212121; border-color: #3f3f3f; color: #f2f5fa; }
+.ed-hist tr.hist-month-total td:first-child { text-align: left; padding-left: 12px; }
 [data-theme="oled"] .ed-tab.active { background: #262626; }
