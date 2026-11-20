@@ -3983,4 +3983,7 @@ img, canvas { max-width: 100%; }
 .ed-hist .ed-date { line-height: 1.35; }
 .ed-hist .ed-ok { color: #1a9c53; font-weight: 700; }
 .ed-hist .ed-fail { color: #e53935; font-weight: 700; }
+/* Monthly subtotal row in Recharge History (Meter Manager style). */
+.ed-hist tr.hist-month-total td { background: var(--bg); font-weight: 700; }
+.ed-hist tr.hist-month-total td:first-child { text-align: left; padding-left: 10px; }
 [data-theme="oled"] .ed-tab.active { background: #262626; }

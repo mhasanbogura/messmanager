@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.37 (build 844)',
+        prof_version:'Version 1.6.38 (build 847)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.37 (বিল্ড 844)',
+            prof_version:'ভার্সন 1.6.38 (বিল্ড 847)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -5297,7 +5297,7 @@ https://u2l.ai/MessManager
                     <h3 class="ed-center">Recharge History</h3>
                     <div class="ed-tbl-scroll"><table class="ed-hist">
                         <thead><tr><th>Date</th><th>Total</th><th>Method</th></tr></thead>
-                        <tbody>${history.slice(0, 60).map(r => `<tr><td>${this.esc(this._histDate(r.date))}</td><td><strong>৳${this._money(r.amount)}</strong></td><td>${this.esc(r.method || '—')}</td></tr>`).join('')}</tbody>
+                        <tbody>${this._elecHistRows(history, 'nesco', 60)}</tbody>
                     </table></div>
                 </section>`;
             } else {
@@ -5306,18 +5306,7 @@ https://u2l.ai/MessManager
                     <h3 class="ed-center">Recharge History</h3>
                     <div class="ed-tbl-scroll"><table class="ed-hist">
                         <thead><tr><th>Date</th><th>Token</th><th>Total</th><th>Energy Amount</th><th>Energy (kWh)</th><th>Meter Rent</th><th>Demand Charge</th><th>VAT</th><th>Rebate</th><th>Status</th></tr></thead>
-                        <tbody>${history.slice(0, 60).map(r => `<tr>
-                            <td class="ed-date">${this._histDateLong(r.date)}</td>
-                            <td class="ed-token">${this._tokenLines(r.token)}</td>
-                            <td><strong>৳${this._moneyShort(r.total)}</strong></td>
-                            <td>৳${this._money(r.amount)}</td>
-                            <td>${this._units(Number(r.kwh) || this._descoKwh(r.amount))}</td>
-                            <td>৳${this._moneyShort(r.rent)}</td>
-                            <td>৳${this._moneyShort(r.charge)}</td>
-                            <td>৳${this._moneyShort(r.vat)}</td>
-                            <td>৳${this._moneyShort(r.rebate)}</td>
-                            <td class="${/success/i.test(String(r.status || '')) ? 'ed-ok' : (/fail/i.test(String(r.status || '')) ? 'ed-fail' : '')}">${this.esc(r.status || '—')}</td>
-                        </tr>`).join('')}</tbody>
+                        <tbody>${this._elecHistRows(history, 'desco', 60)}</tbody>
                     </table></div>
                 </section>`;
             }
@@ -5766,6 +5755,76 @@ https://u2l.ai/MessManager
         const mm = String(d.getMinutes()).padStart(2, '0');
         const ss = String(d.getSeconds()).padStart(2, '0');
         return `${days[d.getDay()]},<br>${d.getDate()} ${months[d.getMonth()]}<br>${d.getFullYear()},<br>${h}:${mm}:${ss} ${ap}`;
+    },
+    /* Recharge history grouped by calendar month, Meter Manager style: each
+       finished month opens with a bold total row; the running month does not. */
+    _histMonthKey(v) {
+        const d = new Date(String(v || '').replace(' ', 'T'));
+        if (isNaN(d.getTime())) return String(v || '').slice(0, 7);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    },
+    _histMonthLabel(v) {
+        const d = new Date(String(v || '').replace(' ', 'T'));
+        if (isNaN(d.getTime())) return String(v || '');
+        return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    },
+    _elecHistRows(list, provider, max) {
+        const now = new Date();
+        const runningKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        const rows = (list || []).slice(0, max || 60);
+        // Keep the oldest visible month whole so its total row is not partial.
+        if (rows.length === max && list.length > max) {
+            const edgeKey = this._histMonthKey(rows[rows.length - 1].date);
+            for (let i = max; i < list.length && this._histMonthKey(list[i].date) === edgeKey; i++) rows.push(list[i]);
+        }
+        const groups = [];
+        rows.forEach(r => {
+            const key = this._histMonthKey(r.date);
+            const last = groups[groups.length - 1];
+            if (last && last.key === key) last.rows.push(r);
+            else groups.push({ key: key, rows: [r] });
+        });
+        const out = [];
+        groups.forEach(g => {
+            if (g.key && g.key !== runningKey) {
+                const label = this.esc(this._histMonthLabel(g.rows[0].date)) + ' Total';
+                if (provider === 'nesco') {
+                    const total = g.rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+                    out.push(`<tr class="hist-month-total"><td colspan="2">${label}</td><td><strong>৳${this._money(total)}</strong></td></tr>`);
+                } else {
+                    const sum = { total: 0, amount: 0, kwh: 0, rent: 0, charge: 0, vat: 0, rebate: 0 };
+                    g.rows.forEach(r => {
+                        sum.total += Number(r.total) || 0;
+                        sum.amount += Number(r.amount) || 0;
+                        sum.kwh += Number(r.kwh) || this._descoKwh(r.amount);
+                        sum.rent += Number(r.rent) || 0;
+                        sum.charge += Number(r.charge) || 0;
+                        sum.vat += Number(r.vat) || 0;
+                        sum.rebate += Number(r.rebate) || 0;
+                    });
+                    out.push(`<tr class="hist-month-total"><td colspan="2">${label}</td><td><strong>৳${this._moneyShort(sum.total)}</strong></td><td>৳${this._money(sum.amount)}</td><td>${this._units(sum.kwh)}</td><td>৳${this._moneyShort(sum.rent)}</td><td>৳${this._moneyShort(sum.charge)}</td><td>৳${this._moneyShort(sum.vat)}</td><td>৳${this._moneyShort(sum.rebate)}</td><td>—</td></tr>`);
+                }
+            }
+            g.rows.forEach(r => {
+                if (provider === 'nesco') {
+                    out.push(`<tr><td>${this.esc(this._histDate(r.date))}</td><td><strong>৳${this._money(r.amount)}</strong></td><td>${this.esc(r.method || '—')}</td></tr>`);
+                } else {
+                    out.push(`<tr>
+                            <td class="ed-date">${this._histDateLong(r.date)}</td>
+                            <td class="ed-token">${this._tokenLines(r.token)}</td>
+                            <td><strong>৳${this._moneyShort(r.total)}</strong></td>
+                            <td>৳${this._money(r.amount)}</td>
+                            <td>${this._units(Number(r.kwh) || this._descoKwh(r.amount))}</td>
+                            <td>৳${this._moneyShort(r.rent)}</td>
+                            <td>৳${this._moneyShort(r.charge)}</td>
+                            <td>৳${this._moneyShort(r.vat)}</td>
+                            <td>৳${this._moneyShort(r.rebate)}</td>
+                            <td class="${/success/i.test(String(r.status || '')) ? 'ed-ok' : (/fail/i.test(String(r.status || '')) ? 'ed-fail' : '')}">${this.esc(r.status || '—')}</td>
+                        </tr>`);
+                }
+            });
+        });
+        return out.join('');
     },
     // Token printed in 4-digit lines, like the meter receipt.
     _tokenLines(token) {
