@@ -3991,6 +3991,6 @@ img, canvas { max-width: 100%; }
    Meter Manager --surface-2 tone so it reads as a band in every theme. */
 .ed-hist tr.hist-month-total td { background: #eef1f6; font-weight: 700; }
 [data-theme="dark"] .ed-hist tr.hist-month-total td { background: #232a38; }
-[data-theme="oled"] .ed-hist tr.hist-month-total td { background: #212121; border-color: #3f3f3f; color: #f2f5fa; }
+[data-theme="oled"] .ed-hist tr.hist-month-total td { background: #212121; color: #f2f5fa; }
 .ed-hist tr.hist-month-total td:first-child { text-align: left; padding-left: 12px; }
 [data-theme="oled"] .ed-tab.active { background: #262626; }
