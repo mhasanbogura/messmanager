@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.46 (build 871)',
+        prof_version:'Version 1.6.47 (build 874)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.46 (বিল্ড 871)',
+            prof_version:'ভার্সন 1.6.47 (বিল্ড 874)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -6791,44 +6791,73 @@ https://u2l.ai/MessManager
     drawBarChart(canvasId, data, days, color) {
         const c = document.getElementById(canvasId);
         if (!c) return;
-        const cw = Math.max(days * 24, 350);
-        const { ctx, w, h } = this._setupHiDPI(c, cw, 180);
-        const pad = { t: 25, r: 15, b: 30, l: 40 };
-        ctx.clearRect(0, 0, w, h);
+        // Same look as the electricity "Usage" chart.
         const vals = [];
-        for (let d = 1; d <= days; d++) vals.push(data[d] || 0);
+        for (let d = 1; d <= days; d++) vals.push(Number(data[d]) || 0);
         const maxV = Math.max(...vals, 1);
-        const chartH = h - pad.t - pad.b;
-        const chartW = w - pad.l - pad.r;
-        const gap = chartW / days;
-        const barW = gap * 0.65;
+        const gStep = this._niceStep(maxV / 4);
+        const top = gStep * 4;
+        const padL = 14, padR = 14, padT = 58, padB = 30;
+        const n = days;
+        const SLOT_MIN = 38;
+        const h = 280;
+        const dpr = window.devicePixelRatio || 1;
+        const holder = c.parentElement;
+        const avail = (holder ? holder.clientWidth : 0) || 320;
+        const w = Math.max(avail, Math.round(n * SLOT_MIN + padL + padR));
+        c.style.width = w + 'px';
+        c.style.height = h + 'px';
+        c.width = Math.round(w * dpr);
+        c.height = Math.round(h * dpr);
+        const ctx = c.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
 
-        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-        ctx.lineWidth = 1;
+        const css = getComputedStyle(document.body);
+        const txt = css.getPropertyValue('--text').trim() || '#14181f';
+        const txt2 = css.getPropertyValue('--text-secondary').trim() || '#8a93a0';
+        const grid = css.getPropertyValue('--border').trim() || '#e6e9ef';
+        const iw = w - padL - padR, ih = h - padT - padB;
+        const slot = iw / Math.max(1, n);
+        const bw = Math.min(30, slot * 0.58);
+        const y0 = padT + ih;
+        const yFor = v => y0 - (Math.max(0, v) / top) * ih;
+        const cx = i => padL + slot * (i + 0.5);
+
+        ctx.textBaseline = 'alphabetic';
         for (let i = 0; i <= 4; i++) {
-            const y = pad.t + (chartH / 4) * i;
-            ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+            const y = yFor(gStep * i);
+            ctx.strokeStyle = grid;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padL, Math.round(y) + 0.5);
+            ctx.lineTo(w - padR, Math.round(y) + 0.5);
+            ctx.stroke();
         }
 
         vals.forEach((v, i) => {
-            const x = pad.l + i * gap + (gap - barW) / 2;
-            const bh = (v / maxV) * chartH;
-            if (bh > 0) {
-                ctx.fillStyle = color;
-                this._drawRoundBar(ctx, x, h - pad.b - bh, barW, bh, 4);
+            const x = cx(i) - bw / 2;
+            const y = yFor(v);
+            const bh = Math.max(0, y0 - y);
+            ctx.fillStyle = color;
+            if (bh < 2) {
+                if (v > 0) ctx.fillRect(x, y0 - 2, bw, 2);
+            } else {
+                this._roundTopRect(ctx, x, y, bw, bh, 4);
+                ctx.fill();
             }
             if (v > 0) {
-                ctx.fillStyle = '#555'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
-                ctx.fillText(this.fmtNum(v), x + barW / 2, h - pad.b - bh - 5);
-                ctx.textAlign = 'left';
+                ctx.fillStyle = txt;
+                ctx.font = '600 11.5px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.fmtNum(v), cx(i), y - 8);
             }
         });
 
-        ctx.fillStyle = '#aaa'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-        const step = days <= 15 ? 1 : days <= 20 ? 2 : Math.ceil(days / 10);
-        for (let d = 1; d <= days; d += step) {
-            ctx.fillText(d, pad.l + (d - 1) * gap + gap / 2, h - 8);
-        }
+        ctx.fillStyle = txt2;
+        ctx.font = '11.5px sans-serif';
+        ctx.textAlign = 'center';
+        for (let d = 1; d <= days; d++) ctx.fillText(d, cx(d - 1), h - 11);
         ctx.textAlign = 'left';
     },
 
