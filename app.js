@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.47 (build 874)',
+        prof_version:'Version 1.6.48 (build 877)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.47 (বিল্ড 874)',
+            prof_version:'ভার্সন 1.6.48 (বিল্ড 877)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -6385,8 +6385,20 @@ https://u2l.ai/MessManager
         const monthEnd = month + '-' + String(daysInMonth).padStart(2, '0');
         const monthLabel = `${new Date(year, mon).toLocaleString('en-US', { month: 'long' })} ${year}`;
         try {
-            const membersSnap = await db.ref(`messes/${this.messId}/members`).once('value');
-            const members = membersSnap.val() || {};
+            const prevMonthDate = new Date(year, mon - 1, 1);
+            const prevMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+            const prevDays = new Date(year, mon, 0).getDate();
+            const prevEnd = prevMonth + '-' + String(prevDays).padStart(2, '0');
+            // One parallel batch instead of six sequential round trips. Members,
+            // bazar and deposits come from the offline cache when it is warm, so
+            // repeat visits paint immediately (a background refresh corrects them).
+            const [membersRaw, allBz, depAll, mlSnap] = await Promise.all([
+                this._dbGet(`messes/${this.messId}/members`, 'members'),
+                this._dbGet(`messes/${this.messId}/bazarItems`, 'bazarItems'),
+                this._dbGet(`messes/${this.messId}/deposits`, 'deposits'),
+                db.ref(`messes/${this.messId}/meals`).orderByKey().startAt(prevMonth + '-01').endAt(monthEnd).once('value')
+            ]);
+            const members = membersRaw || {};
             const mids = Object.keys(members).filter(id => id.startsWith('member_')).sort((a, b) => (members[a]?.name || '').localeCompare(members[b]?.name || ''));
             const allMids = Object.keys(members);
             const currentNames = new Set(allMids.map(id => (members[id] || {}).name).filter(Boolean));
@@ -6395,8 +6407,6 @@ https://u2l.ai/MessManager
             allMids.forEach(id => { const n = (members[id] || {}).name; if (n) uidToName[id] = n; });
             const resolveName = (id) => uidToName[id] || id;
 
-            const bzSnap = await db.ref(`messes/${this.messId}/bazarItems`).once('value');
-            const allBz = bzSnap.val() || {};
             let totalBazar = 0, totalMealBazar = 0, totalUtilBazar = 0;
             const bzByName = {};
             const bzByDay = {};
@@ -6450,11 +6460,11 @@ https://u2l.ai/MessManager
                 }
             });
 
-            const mlSnap = await db.ref(`messes/${this.messId}/meals`).orderByKey().startAt(month + '-01').endAt(monthEnd).once('value');
             const memberMeals = {};
             let totalMeals = 0;
             const mealsByDay = {};
             mlSnap.forEach(d => {
+                if (!d.key.startsWith(month + '-')) return;
                 const day = parseInt(d.key.slice(8, 10), 10);
                 Object.entries(d.val() || {}).forEach(([name, m]) => {
                     if (!currentNames.has(name)) { if (name !== 'Manager') orphanNames.add(name); }
@@ -6467,8 +6477,6 @@ https://u2l.ai/MessManager
 
             const rate = totalMeals > 0 ? totalMealBazar / totalMeals : 0;
 
-            const depSnap = await db.ref(`messes/${this.messId}/deposits`).once('value');
-            const depAll = depSnap.val() || {};
             const depByName = {};
             let totalDep = 0, totalMealDep = 0, totalUtilDep = 0;
             Object.values(depAll).forEach(v => {
@@ -6522,23 +6530,20 @@ https://u2l.ai/MessManager
                 return { name, balance: dep - mealCost };
             }).sort((a, b) => a.name.localeCompare(b.name));
 
-            let monthPrev = new Date(year, mon - 1, 1);
-            const prevMonth = `${monthPrev.getFullYear()}-${String(monthPrev.getMonth() + 1).padStart(2, '0')}`;
-            const prevDays = new Date(year, mon, 0).getDate();
-            const prevEnd = prevMonth + '-' + String(prevDays).padStart(2, '0');
-            const prevBzSnap = await db.ref(`messes/${this.messId}/bazarItems`).once('value');
             let prevBzTotal = 0;
-            Object.values(prevBzSnap.val() || {}).forEach(b => {
+            Object.values(allBz).forEach(b => {
                 if (b.date && b.date >= prevMonth + '-01' && b.date <= prevEnd) prevBzTotal += parseFloat(b.cost) || 0;
             });
-            const prevMlSnap = await db.ref(`messes/${this.messId}/meals`).orderByKey().startAt(prevMonth + '-01').endAt(prevEnd).once('value');
             let prevMeals = 0;
-            prevMlSnap.forEach(d => { Object.values(d.val() || {}).forEach(m => { prevMeals += (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0); }); });
+            mlSnap.forEach(d => {
+                if (d.key < prevMonth + '-01' || d.key > prevEnd) return;
+                Object.values(d.val() || {}).forEach(m => { prevMeals += (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0); });
+            });
             const prevRate = prevMeals > 0 ? prevBzTotal / prevMeals : 0;
             const rateDiff = prevRate > 0 ? ((rate - prevRate) / prevRate * 100).toFixed(0) : 0;
 
             let prevUtilBz = 0;
-            Object.values(prevBzSnap.val() || {}).forEach(b => {
+            Object.values(allBz).forEach(b => {
                 if (b.date && b.date >= prevMonth + '-01' && b.date <= prevEnd && (b.category || 'bazar') === 'utility') prevUtilBz += parseFloat(b.cost) || 0;
             });
             const prevUtilRate = mids.length > 0 ? prevUtilBz / mids.length : 0;
@@ -6677,10 +6682,10 @@ https://u2l.ai/MessManager
 
             setTimeout(() => {
                 this.drawRateChart(mealBzByDay, mealsByDay, daysInMonth);
-                this.drawBarChart('am-bz-chart', mealBzByDay, daysInMonth, '#FFB300');
+                this.drawBarChart('am-bz-chart', mealBzByDay, daysInMonth, '#FFB300', true);
                 this.drawMlChart(mealsByDay, daysInMonth);
                 if (mealShare.length) this.drawDonut(mealShare);
-                if (Object.keys(utilBzByDay).length) this.drawUtilBzChart(utilBzByDay, daysInMonth);
+                this.drawUtilBzChart(utilBzByDay, daysInMonth);
                 this.drawUtilRateChart(utilBzByDay, daysInMonth, mids.length);
             }, 100);
         } catch (e) { console.error('loadMonthly error:', e); }
@@ -6788,7 +6793,7 @@ https://u2l.ai/MessManager
         ctx.textAlign = 'left';
     },
 
-    drawBarChart(canvasId, data, days, color) {
+    drawBarChart(canvasId, data, days, color, isMoney) {
         const c = document.getElementById(canvasId);
         if (!c) return;
         // Same look as the electricity "Usage" chart.
@@ -6799,7 +6804,7 @@ https://u2l.ai/MessManager
         const top = gStep * 4;
         const padL = 14, padR = 14, padT = 58, padB = 30;
         const n = days;
-        const SLOT_MIN = 38;
+        const SLOT_MIN = 58;
         const h = 280;
         const dpr = window.devicePixelRatio || 1;
         const holder = c.parentElement;
@@ -6819,10 +6824,31 @@ https://u2l.ai/MessManager
         const grid = css.getPropertyValue('--border').trim() || '#e6e9ef';
         const iw = w - padL - padR, ih = h - padT - padB;
         const slot = iw / Math.max(1, n);
-        const bw = Math.min(30, slot * 0.58);
+        const bw = Math.min(30, slot * 0.52);
         const y0 = padT + ih;
         const yFor = v => y0 - (Math.max(0, v) / top) * ih;
         const cx = i => padL + slot * (i + 0.5);
+
+        // Open with today's day centred in the horizontal scroll strip.
+        if (!c._seen) {
+            c._seen = 1;
+            const centerOnToday = () => {
+                if (!holder) return;
+                const max = holder.scrollWidth - holder.clientWidth;
+                if (max <= 0) { holder.scrollLeft = 0; return; }
+                const now = new Date();
+                const sm = (typeof this.getSelMonth === 'function') ? this.getSelMonth() : null;
+                const sameMonth = !sm || (sm.year === now.getFullYear() && sm.month === now.getMonth());
+                const day = sameMonth ? now.getDate() : 0;
+                if (!day || day > days) { holder.scrollLeft = 0; return; }
+                const target = cx(day - 1) - holder.clientWidth / 2;
+                holder.scrollLeft = Math.max(0, Math.min(max, target));
+            };
+            centerOnToday();
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(centerOnToday);
+            setTimeout(centerOnToday, 60);
+            setTimeout(centerOnToday, 250);
+        }
 
         ctx.textBaseline = 'alphabetic';
         for (let i = 0; i <= 4; i++) {
@@ -6836,22 +6862,28 @@ https://u2l.ai/MessManager
         }
 
         vals.forEach((v, i) => {
+            if (!(v > 0)) {
+                // No spending that day: a small dot on the baseline, like "No reading".
+                ctx.fillStyle = txt2;
+                ctx.beginPath();
+                ctx.arc(cx(i), y0 - 4, 2.6, 0, Math.PI * 2);
+                ctx.fill();
+                return;
+            }
             const x = cx(i) - bw / 2;
             const y = yFor(v);
             const bh = Math.max(0, y0 - y);
             ctx.fillStyle = color;
             if (bh < 2) {
-                if (v > 0) ctx.fillRect(x, y0 - 2, bw, 2);
+                ctx.fillRect(x, y0 - 2, bw, 2);
             } else {
                 this._roundTopRect(ctx, x, y, bw, bh, 4);
                 ctx.fill();
             }
-            if (v > 0) {
-                ctx.fillStyle = txt;
-                ctx.font = '600 11.5px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.fmtNum(v), cx(i), y - 8);
-            }
+            ctx.fillStyle = txt;
+            ctx.font = '600 11.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(isMoney ? '৳' + this._barNum(v) : String(this.fmtNum(v)), cx(i), y - 8);
         });
 
         ctx.fillStyle = txt2;
@@ -6862,11 +6894,11 @@ https://u2l.ai/MessManager
     },
 
     drawUtilBzChart(data, days) {
-        this.drawBarChart('am-util-bz-chart', data, days, '#F57C00');
+        this.drawBarChart('am-util-bz-chart', data, days, '#F57C00', true);
     },
 
     drawMlChart(mealsByDay, days) {
-        this.drawBarChart('am-ml-chart', mealsByDay, days, '#26A69A');
+        this.drawBarChart('am-ml-chart', mealsByDay, days, '#26A69A', false);
     },
 
     drawUtilRateChart(utilBzByDay, days, memberCount) {

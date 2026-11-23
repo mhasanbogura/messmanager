@@ -3080,7 +3080,7 @@ img, canvas { max-width: 100%; }
 .am-chart-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .am-chart-scroll canvas { display: block; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
 .am-chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; padding: 0 4px; }
-.am-chart-scroll canvas { display: block; min-width: 500px; }
+.am-chart-scroll canvas { display: block; min-width: 500px; max-width: none; }
 .am-donut-wrap { display: flex; align-items: center; gap: 16px; }
 .am-donut-wrap canvas { flex-shrink: 0; }
 .am-donut-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
