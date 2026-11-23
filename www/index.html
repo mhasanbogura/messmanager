@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <title>Mess Manager</title>
     <link rel="icon" type="image/png" href="app-icon.png?v=1.4.40">
-    <link rel="stylesheet" href="style.css?v=202611231730">
+    <link rel="stylesheet" href="style.css?v=202611251330">
     <link href="fonts/material-icons.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -230,7 +230,7 @@
                     <div class="adash-fin-label adash-fin-head" onclick="App.navigate('meal')"><span class="material-icons-round" style="font-size:18px;color:var(--primary)">lunch_dining</span><strong data-lang-key="dash_meal">Meal</strong><button class="adash-elec-refresh" onclick="event.stopPropagation();App.refreshDashboardTotals()" title="Refresh"><span class="material-icons-round">refresh</span></button></div>
                     <div class="adash-fin-box"><small data-lang-key="dash_deposit">Deposit</small><strong id="dash-deposit">৳ 0</strong></div>
                     <div class="adash-fin-box"><small data-lang-key="dash_balance">Balance</small><strong id="dash-balance" class="pos">৳ 0</strong></div>
-                    <div class="adash-fin-box"><small data-lang-key="dash_expense_per_meal">Expense per Meal</small><strong id="dash-rate">৳ 0</strong></div>
+                    <div class="adash-fin-box"><small data-lang-key="dash_expense_per_meal">Meal Rate</small><strong id="dash-rate">৳ 0</strong></div>
                 </div>
                 </div>
                 <div class="adash-finance-card" style="margin-top:4px">
@@ -255,15 +255,16 @@
                     <div class="adash-stats-head">
                         <span class="material-icons-round">groups</span>
                         <strong data-lang-key="dash_meal_summary">Meal Summary :</strong>
+                        <button class="adash-custom" id="msum-custom-btn" onclick="App.openMealSummaryCustomise()"><span>Customise table</span><span class="material-icons-round">tune</span></button>
                     </div>
                     <div class="adash-table-wrap">
-                        <table class="adash-table">
+                        <table class="adash-table msum-table" id="dash-meal-summary">
                             <thead>
                                 <tr>
                                     <th data-lang-key="dash_table_name">Name</th>
-                                    <th data-lang-key="dash_table_total">Total</th>
-                                    <th data-lang-key="dash_table_expense">Expense (৳)</th>
-                                    <th data-lang-key="dash_table_deposit">Deposit (৳)</th>
+                                    <th><small>Meal+Special</small><span data-lang-key="dash_table_total">Total</span></th>
+                                    <th><small>Meal+Special</small><span data-lang-key="dash_table_expense">Cost (৳)</span></th>
+                                    <th><small>Bazar+Money</small><span data-lang-key="dash_table_deposit">Deposit (৳)</span></th>
                                     <th data-lang-key="dash_table_balance">Balance (৳)</th>
                                 </tr>
                             </thead>
@@ -278,9 +279,10 @@
                     <div class="adash-stats-head">
                         <span class="material-icons-round">receipt_long</span>
                         <strong data-lang-key="dash_util_others">Rent, Utilities & Others :</strong>
+                        <button class="adash-custom" id="util-custom-btn" onclick="App.openUtilitySummaryCustomise()"><span>Customise table</span><span class="material-icons-round">tune</span></button>
                     </div>
                     <div class="adash-table-wrap">
-                        <table class="adash-table">
+                        <table class="adash-table" id="dash-util-table">
                             <thead>
                                 <tr>
                                     <th data-lang-key="dash_table_name">Name</th>
@@ -393,10 +395,15 @@
                     <h2 data-lang-key="am_title">Add Meal</h2>
                 </div>
                 <div class="aam-body">
+                    <div class="bz-tabs" style="padding:0 0 8px">
+                        <button class="bz-tab active" data-tab="meal" onclick="App.aamSwitchTab('meal')"><span class="material-icons-round">restaurant</span> Meal</button>
+                        <button class="bz-tab" data-tab="special" onclick="App.aamSwitchTab('special')"><span class="material-icons-round">star</span> Special Meal</button>
+                    </div>
                     <label class="dep-label" data-lang-key="am_select_date">Select meal date</label>
                     <div class="dep-date" id="aam-date-select" style="cursor:pointer" onclick="App.aamPickDate()"><span class="material-icons-round">calendar_month</span> <span id="aam-date-text">13 Sep 2026</span><span class="material-icons-round" style="margin-left:auto;font-size:18px;color:#999">expand_more</span></div>
+                    <div id="aam-special-panel" style="display:none"></div>
                     <div class="aam-section-head">
-                        <label class="dep-label" style="margin:0" data-lang-key="am_set_counts">Set member meal counts</label>
+                        <label class="dep-label" style="margin:0" data-lang-key="am_set_counts" id="aam-section-label">Set member meal counts</label>
                     </div>
                     <div id="aam-member-cards"></div>
                 </div>
@@ -707,6 +714,7 @@
         </div>
     </div>
 
+
     <div id="toast-container"></div>
 
     <nav class="bottom-nav" id="bottom-nav">
@@ -724,6 +732,6 @@
     <script src="firebase-auth-compat.js" defer></script>
     <script src="firebase-database-compat.js" defer></script>
     <script src="firebase-config.js" defer></script>
-    <script src="app.js?v=202611231900" defer></script>
+    <script src="app.js?v=202611251330" defer></script>
 </body>
 </html>

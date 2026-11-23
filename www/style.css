@@ -1824,7 +1824,7 @@ select.input-sm { cursor: pointer; }
 .adash-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
 .adash-table thead th {
     background: linear-gradient(135deg, #555, #333);
-    color: #fff; font-weight: 600; padding: 8px 4px; text-align: center;
+    color: #fff; font-weight: 700; padding: 8px 4px; text-align: center;
     font-size: 11px; line-height: 1.3;
 }
 .adash-table thead th small { display: block; font-size: 9px; font-weight: 400; opacity: .85; font-family: 'Inter', sans-serif; }
@@ -2017,6 +2017,15 @@ select.input-sm { cursor: pointer; }
 .bz-util-selectall input[type="checkbox"] { width: 20px; height: 20px; accent-color: #d32f2f; }
 .bz-util-selectall span:first-of-type { flex: 1; font-size: 16px; font-weight: 600; color: #333; }
 .bz-util-count { font-size: 14px; color: #888; }
+/* Select all caret: opens / closes the name list next to it. */
+.aam-select-caret { background: none; border: none; padding: 0; margin: 0; display: flex; align-items: center; cursor: pointer; color: #777; }
+.aam-select-caret .material-icons-round { font-size: 20px; color: inherit; }
+[data-theme="dark"] .aam-select-caret, [data-theme="oled"] .aam-select-caret { color: #bbb; }
+.bz-select-caret { background: none; border: none; padding: 0; margin: 0; display: flex; align-items: center; cursor: pointer; color: #777; }
+.bz-select-caret .material-icons-round { font-size: 20px; color: inherit; }
+[data-theme="dark"] .bz-select-caret, [data-theme="oled"] .bz-select-caret { color: #bbb; }
+
+
 .bz-util-member {
     display: flex; align-items: center; gap: 10px;
     padding: 12px 14px; border-top: 1px solid #f0f0f0; cursor: pointer;
@@ -2121,14 +2130,18 @@ select.input-sm { cursor: pointer; }
 }
 .ameal-table tbody td.am-col-type {
     position: sticky; left: 80px; z-index: 2;
-    width: 90px; min-width: 90px; max-width: 90px; height: auto;
+    width: 100px; min-width: 100px; max-width: 100px; height: auto;
     text-align: left; padding: 3px 4px; vertical-align: middle;
     background: linear-gradient(135deg, #e0e0e0, #ccc) !important;
 }
 .ameal-table .ameal-mname { font-weight: 700; font-size: 13px; color: #000; line-height: 1.2; }
 .ameal-table .ameal-mtotal { font-size: 10px; color: #555; }
-.ameal-table .ameal-row-label { display: flex; align-items: center; gap: 3px; font-size: 11px; color: #333; white-space: nowrap; }
-.ameal-table .ameal-row-count { font-weight: 700; font-size: 13px; color: #333; }
+.ameal-table .ameal-row-label { display: grid; grid-template-columns: 15px 20px minmax(0, 1fr); align-items: center; column-gap: 4px; font-size: 11px; color: #333; white-space: nowrap; }
+.ameal-table .ameal-row-label.ameal-row-view { display: flex; justify-content: center; }
+.ameal-table .ameal-row-icon { font-size: 12px; line-height: 1; text-align: center; }
+.ameal-table .ameal-row-name { font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
+.ameal-table .ameal-row-count { font-weight: 700; font-size: 13px; color: #333; text-align: right; }
+.ameal-table .ameal-row-sp .ameal-row-name { color: #6a1b9a; }
 .ameal-table .ameal-row-count.dinner { color: #333; }
 .ameal-table .ameal-row-count.zero { color: #aaa; }
 .ameal-table th[data-today] { background: linear-gradient(135deg, #555, #333) !important; color: #fff !important; }
@@ -2222,7 +2235,7 @@ select.input-sm { cursor: pointer; }
 .aam-card-top .aam-name { flex: 1; font-size: 14px; font-weight: 600; color: #1a1a1a; }
 .aam-card-top .aam-req { font-size: 9px; color: #d32f2f; border: 1px solid #d32f2f; border-radius: 8px; padding: 1px 6px; }
 .aam-card-top .aam-total { font-size: 12px; color: #555; font-weight: 500; }
-.aam-meals-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; }
+.aam-meals-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 1px; }
 .aam-meal-col { text-align: center; }
 .aam-meal-col label { display: block; font-size: 11px; color: #888; margin-bottom: 2px; }
 .aam-counter { display: flex; align-items: center; gap: 0; justify-content: center; }
@@ -2772,7 +2785,7 @@ img, canvas { max-width: 100%; }
 .aflat-icon-btn .material-icons-round { font-size: 20px; }
 .aflat-card-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; margin-top: 14px; }
 .aflat-card-box {
-    background: var(--bg); border: 1px solid var(--card-border);
+    background: var(--card); border: 1px solid var(--card-border);
     border-radius: 14px; padding: 10px 12px; min-width: 0;
 }
 .aflat-card-box-head { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #888; margin-bottom: 4px; }
@@ -2792,7 +2805,8 @@ img, canvas { max-width: 100%; }
 }
 
 .aflat-tabs {
-    display: flex; margin: 14px 12px 0; background: #e0ddd5; border-radius: 12px;
+    display: flex; margin: 14px 12px 0; background: var(--bg); border-radius: 14px;
+    border: 1.5px solid var(--card-edge);
     overflow: hidden; position: sticky; top: var(--sat); z-index: 5;
 }
 .aflat-tab {
@@ -2833,7 +2847,7 @@ img, canvas { max-width: 100%; }
 }
 .aflat-add-btn:hover, .aflat-add-btn:active { background: linear-gradient(135deg, #6aa5f5, #1565C0); }
 .aflat-hint { font-size: 12px; color: #999; margin-top: 6px; display: flex; justify-content: space-between; }
-.aflat-divider { height: 1px; background: #e0ddd5; margin: 14px 0; }
+.aflat-divider { height: 1px; background: var(--card-border); margin: 14px 0; }
 .aflat-total { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; }
 .aflat-total strong { color: #d32f2f; }
 
@@ -4049,7 +4063,7 @@ img, canvas { max-width: 100%; }
 }
 /* The Breakfast / Lunch / Dinner cells and the inner number boxes of the
    Meal, Utility and Electricity cards take the Meter Manager frame as well. */
-html[data-theme] :is(.adash-meal, .adash-meal.breakfast, .adash-meal.lunch, .adash-meal.dinner,
+:is(.adash-meal, .adash-meal.breakfast, .adash-meal.lunch, .adash-meal.dinner,
     .adash-fin-box, .adash-analyse, .adash-mess-box, .adash-table-wrap, .adash-share,
     .aflat-card-box, .aflat-info-box, .aflat-member-item, .aflat-people-item) {
     border: 1.5px solid var(--card-edge);
@@ -4057,51 +4071,51 @@ html[data-theme] :is(.adash-meal, .adash-meal.breakfast, .adash-meal.lunch, .ada
     box-shadow: var(--card-shadow-mm);
 }
 /* Round icon buttons (edit / share) take the same edge as the cards. */
-html[data-theme] :is(.adash-edit, .aflat-icon-btn) {
+:is(.adash-edit, .aflat-icon-btn) {
     border: 1.5px solid var(--card-edge);
 }
 /* Toolbar pills and filter / view buttons on Expense List and Money
    Management use the card frame as well. */
-html[data-theme] :is(.abazar-filter-btn, .abazar-view-btn) {
+:is(.abazar-filter-btn, .abazar-view-btn) {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
 }
 /* Filter / sort popup and each option inside it use the card frame. */
-html[data-theme] .abazar-member-dropdown {
+.abazar-member-dropdown {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
     padding: 6px;
 }
-html[data-theme] .abazar-member-dropdown-item {
+.abazar-member-dropdown-item {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
     padding: 9px 12px;
     margin-bottom: 6px;
 }
-html[data-theme] .abazar-member-dropdown-item:last-child { margin-bottom: 0; }
+.abazar-member-dropdown-item:last-child { margin-bottom: 0; }
 /* Add Member input box and its ADD button use the card frame as well. */
-html[data-theme] :is(.aflat-input-wrap, .aflat-add-btn) {
+:is(.aflat-input-wrap, .aflat-add-btn) {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
 }
 /* Input boxes, chips, tabs and action buttons on the Add Meal, Add Cost and
    Add Deposit pages use the same frame as the Add Member box. */
-html[data-theme] :is(.bz-input-wrap, .bz-qty-wrap, .bz-add-more, .bz-tab, .aam-tab,
+:is(.bz-input-wrap, .bz-qty-wrap, .bz-add-more, .bz-tab, .aam-tab,
     .dep-date, .dep-chip, .dep-input-wrap) {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
 }
-html[data-theme] :is(.bz-input-wrap, .bz-qty-wrap, .dep-date, .dep-input-wrap) {
+:is(.bz-input-wrap, .bz-qty-wrap, .dep-date, .dep-input-wrap) {
     padding: 8px 12px;
     background: var(--card);
 }
 /* Month / unit picker popup and its options use the same frame. */
-html[data-theme] .bz-unit-menu {
+.bz-unit-menu {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
@@ -4109,14 +4123,98 @@ html[data-theme] .bz-unit-menu {
     gap: 6px;
     overflow: visible;
 }
-html[data-theme] .bz-unit-opt {
+.bz-unit-opt {
     border: 1.5px solid var(--card-edge);
     border-radius: 14px;
     box-shadow: var(--card-shadow-mm);
     padding: 8px 12px;
 }
-html[data-theme] .bz-unit-opt.active { border-color: var(--card-edge); }
+.bz-unit-opt.active { border-color: var(--card-edge); }
 /* The Manager / Current month boxes sit side by side inside the mess card:
    drop the shared outline and divider so each box reads as its own card. */
 .adash-mess-grid { border: none; border-radius: 0; overflow: visible; gap: 6px; }
 .adash-mess-box + .adash-mess-box { border-left: none; }
+
+/* Meal Entry -> View sheet: each meal row takes the shared card frame. */
+.mv-opt {
+    display: flex; align-items: center; gap: 12px; cursor: pointer;
+    padding: 12px; background: var(--card);
+    border: 1.5px solid var(--card-edge); border-radius: 14px;
+    box-shadow: var(--card-shadow-mm);
+}
+/* ==================== MEAL SUMMARY : MEMBER STATS TABLE ==================== */
+.msum-table thead th small {
+    display: block; font-size: 10px; font-weight: 500; opacity: .8;
+    font-family: 'Inter', sans-serif; letter-spacing: .1px; margin-bottom: 1px;
+}
+/* Show Grid Lines: both vertical and horizontal lines, or none at all. */
+.msum-grid tbody td { border-bottom: 1px solid #c7ccd6; }
+.msum-grid tbody td + td { border-left: 1px solid #c7ccd6; }
+.msum-table:not(.msum-grid) tbody td,
+.msum-table:not(.msum-grid) tbody tr.adash-total td { border-top: none; border-bottom: none; }
+[data-theme="dark"] .msum-grid tbody td, [data-theme="oled"] .msum-grid tbody td { border-bottom-color: rgba(255,255,255,.14); }
+[data-theme="dark"] .msum-grid tbody td + td, [data-theme="oled"] .msum-grid tbody td + td { border-left-color: rgba(255,255,255,.14); }
+.msum-table.msum-bold tbody td strong { font-weight: 800; }
+.msum-table tbody td {
+    font-size: 15px; padding: 8px 4px; vertical-align: middle;
+}
+.msum-table tbody td.c-name { font-weight: 400; font-size: 15px; text-align: left; padding-left: 12px; }
+.msum-table tbody td strong { font-weight: 400; font-size: 15px; }
+/* Header and Total row are always bold; other figures follow "Bold every figure". */
+.msum-table tbody tr.adash-total td,
+.msum-table tbody tr.adash-total td strong { font-weight: 700; }
+.msum-table.msum-bold tbody tr.adash-total td,
+.msum-table.msum-bold tbody tr.adash-total td strong { font-weight: 800; }
+.msum-table .msum-bd {
+    display: none; font-size: 11px; font-weight: 400; letter-spacing: .2px;
+    color: var(--text-secondary); margin-bottom: 1px;
+}
+.msum-bd-on .msum-bd { display: block; }
+.msum-table:not(.msum-bd-on) thead th small { display: none; }
+.msum-table tbody td.msum-bal.neg strong { color: #c62828; }
+.msum-table tbody td.msum-bal.pos strong { color: #2e7d32; }
+[data-theme="dark"] .msum-table tbody td.msum-bal.neg strong, [data-theme="oled"] .msum-table tbody td.msum-bal.neg strong { color: #ff9a94; }
+[data-theme="dark"] .msum-table tbody td.msum-bal.pos strong, [data-theme="oled"] .msum-table tbody td.msum-bal.pos strong { color: #7fd99a; }
+.msum-table tbody tr:last-child td { border-bottom: none; }
+.msum-table tbody tr:last-child td:first-child { border-radius: 0 0 0 14px; }
+.msum-table tbody tr:last-child td:last-child { border-radius: 0 0 14px 0; }
+.adash-stats-head .adash-custom { background: none; border: none; padding: 0; }
+
+/* Rent, Utilities & Others: the same Show Grid Lines / Bold every figure options. */
+#dash-util-table:not(.msum-grid) tbody td,
+#dash-util-table:not(.msum-grid) tbody tr.adash-total td { border-top: none; border-bottom: none; }
+#dash-util-table tbody td strong { font-weight: 400; }
+#dash-util-table tbody tr.adash-total td strong { font-weight: 700; }
+#dash-util-table.msum-bold tbody td strong { font-weight: 800; }
+#dash-util-table.msum-bold tbody tr.adash-total td strong { font-weight: 800; }
+#dash-util-table tbody tr:last-child td { border-bottom: none; }
+
+/* ==================== WEB DATE PICKER ==================== */
+.app-date-overlay {
+    position: fixed; inset: 0; z-index: 10050;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+}
+.app-date-card {
+    background: #fff; border-radius: 16px; padding: 18px 18px 14px;
+    width: 100%; max-width: 300px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.25);
+}
+.app-date-title { margin: 0 0 10px; font-size: 15px; font-weight: 700; color: #111; }
+.app-date-input {
+    width: 100%; box-sizing: border-box; padding: 10px 12px;
+    border: 1.5px solid #d5dbe3; border-radius: 10px;
+    font-family: inherit; font-size: 15px; color: #111; background: #f7f9fc;
+}
+.app-date-btns { display: flex; gap: 8px; margin-top: 14px; }
+.app-date-btn {
+    flex: 1; padding: 10px 0; border-radius: 10px; border: none;
+    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.app-date-cancel { background: #eef1f5; color: #444; }
+.app-date-ok { background: var(--primary); color: #fff; }
+[data-theme="oled"] .app-date-card { background: #1b1b1b; }
+[data-theme="oled"] .app-date-title { color: #fff; }
+[data-theme="oled"] .app-date-input { background: #111; border-color: #2c2c2c; color: #fff; }
+[data-theme="oled"] .app-date-cancel { background: #2a2a2a; color: #ddd; }

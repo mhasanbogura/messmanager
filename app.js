@@ -94,11 +94,11 @@ const App = {
         dash_greet_morning:'Good morning',dash_greet_afternoon:'Good afternoon',dash_greet_evening:'Good evening',
         dash_share:'Share Mess',dash_manager:'Manager',dash_current_month:'Current month',dash_notice:'Notice',
         dash_notice_preview:'Pin a notice for the whole house',dash_today:'Today is',dash_breakfast:'Breakfast',dash_lunch:'Lunch',dash_dinner:'Dinner',
-        dash_meal:'Meal',dash_deposit:'Deposit',dash_balance:'Balance',dash_expense_per_meal:'Expense per Meal',
+        dash_meal:'Meal',dash_deposit:'Deposit',dash_balance:'Balance',dash_expense_per_meal:'Meal Rate',
         dash_utility:'Utility',dash_expense_per_utility:'Expense per utility',dash_analyse:'Analyze',
         dash_electricity:'Electricity',dash_view_details:'View Details',
         dash_meal_summary:'Meal Summary',dash_util_others:'Rent, Utilities & Others',
-        dash_table_name:'Name',dash_table_total:'Total',dash_table_expense:'Expense (৳)',dash_table_deposit:'Deposit (৳)',dash_table_balance:'Balance (৳)',
+        dash_table_name:'Name',dash_table_total:'Total',dash_table_expense:'Cost (৳)',dash_table_deposit:'Deposit (৳)',dash_table_balance:'Balance (৳)',
         dash_table_rent:'Rent (৳)',dash_table_cook:'Cook (৳)',dash_table_util_others:'Utilities (৳)',
         dash_no_data:'No data',
         // Expense Today
@@ -181,7 +181,7 @@ const App = {
         // Analysis
         an_title:'Analysis',an_month:'Month',an_current_month:'Current Month:',an_tab_meal:'Meal',an_tab_utility:'Utility',
         an_total_meals:'Total meals',an_meal_bazar:'Meal bazar',an_members:'Members',
-        an_expense_per_meal:'Expense per Meal',an_bazar:'Bazar',an_meals_label:'Meals',
+        an_expense_per_meal:'Meal Rate',an_bazar:'Bazar',an_meals_label:'Meals',
         an_member_balances:'Member balances',an_credit_hint:'Green = in credit · Red = owes (deposit − meal cost)',
         an_expense_trend:'Expense per Meal trend',an_vs_last_month:'vs last month',
         an_costlier:'costlier',an_cheaper:'cheaper',
@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.48 (build 877)',
+        prof_version:'Version 1.6.49 (build 880)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.48 (বিল্ড 877)',
+            prof_version:'ভার্সন 1.6.49 (বিল্ড 880)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -2507,6 +2507,7 @@ https://u2l.ai/MessManager
 
     async loadDashboard() {
         if (!this.messId) return;
+        this._watchTablePrefs();
         try {
             const now = new Date();
             const sm = this.getSelMonth();
@@ -2614,6 +2615,9 @@ https://u2l.ai/MessManager
             document.getElementById('dash-notice-preview').textContent = preview;
 
             let bazTotal = 0;
+            let specialExpenseTotal = 0;
+            const specialCostByDate = {};
+            const specialSplitByDate = {};
             const mealPaidBy = {};
             const utilPaidBy = {};
             Object.values(bzData).forEach(b => {
@@ -2622,6 +2626,19 @@ https://u2l.ai/MessManager
                 const cat = b.category || 'bazar';
                 if (cat === 'bazar') {
                     bazTotal += amt;
+                    if ((b.name || '').trim().toLowerCase() === 'special meal') {
+                        // Special Meal cost is shared day-wise by that day's special counts
+                        // (see specialCostByName below); it never moves the Meal Rate.
+                        specialExpenseTotal += amt;
+                        const dk = b.date;
+                        specialCostByDate[dk] = (specialCostByDate[dk] || 0) + amt;
+                        // Fallback only: a day with special cost but no special counts.
+                        const spName = resolveName((b.splitWith || b.memberId || '').trim());
+                        if (spName && spName !== 'Manager') {
+                            specialSplitByDate[dk] = specialSplitByDate[dk] || {};
+                            specialSplitByDate[dk][spName] = (specialSplitByDate[dk][spName] || 0) + amt;
+                        }
+                    }
                     const n = resolveName((b.memberId || '').trim());
                     if (n && n !== 'Manager') { mealPaidBy[n] = (mealPaidBy[n] || 0) + amt; if (!currentNames.has(n)) orphanNames.add(n); }
                 } else if (cat === 'utility') {
@@ -2631,17 +2648,45 @@ https://u2l.ai/MessManager
             });
 
             const memberMeals = {};
+            const memberSpecial = {};
+            const specialByDate = {};
             let totalMeals = 0;
+            let totalSpecial = 0;
             Object.entries(mlMData).forEach(([key, d]) => {
                 if (key < month + '-01' || key > monthEnd) return;
                 Object.entries(d || {}).forEach(([memberName, m]) => {
                     if (!currentNames.has(memberName)) { if (memberName !== 'Manager') orphanNames.add(memberName); }
                     const base = (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0);
+                    const sp = m.special || 0;
                     memberMeals[memberName] = (memberMeals[memberName] || 0) + base;
+                    memberSpecial[memberName] = (memberSpecial[memberName] || 0) + sp;
+                    if (sp) {
+                        specialByDate[key] = specialByDate[key] || {};
+                        specialByDate[key][memberName] = (specialByDate[key][memberName] || 0) + sp;
+                    }
                     totalMeals += base;
+                    totalSpecial += sp;
                 });
             });
-            const rate = totalMeals > 0 ? bazTotal / totalMeals : 0;
+            const mealBazarTotal = bazTotal - specialExpenseTotal;
+            const rate = totalMeals > 0 ? mealBazarTotal / totalMeals : 0;
+            /* Special is charged day by day:
+               (that day's special cost / that day's special meal counts) x member's counts that day. */
+            const specialCostByName = {};
+            Object.keys(specialCostByDate).forEach(dk => {
+                const dayCost = specialCostByDate[dk] || 0;
+                const counts = specialByDate[dk] || {};
+                const dayMeals = Object.values(counts).reduce((a, v) => a + (v || 0), 0);
+                if (dayMeals > 0) {
+                    Object.entries(counts).forEach(([nm, c]) => {
+                        specialCostByName[nm] = (specialCostByName[nm] || 0) + dayCost * (c || 0) / dayMeals;
+                    });
+                } else {
+                    Object.entries(specialSplitByDate[dk] || {}).forEach(([nm, a]) => {
+                        specialCostByName[nm] = (specialCostByName[nm] || 0) + a;
+                    });
+                }
+            });
             const mealDepByName = {}; const utilDepByName = {}; let totalDep = 0; let totalMealDep = 0; let totalUtilDep = 0;
             Object.values(depAll).forEach(v => {
                 if (!v || typeof v !== 'object') return;
@@ -2660,6 +2705,7 @@ https://u2l.ai/MessManager
                     }
                 }
             });
+            const rawDepByName = { ...mealDepByName };
             Object.entries(mealPaidBy).forEach(([name, amt]) => {
                 mealDepByName[name] = (mealDepByName[name] || 0) + amt;
                 totalMealDep += amt;
@@ -2695,32 +2741,40 @@ https://u2l.ai/MessManager
             const rowsEl = document.getElementById('dash-member-rows');
             const t1Names = memberMids.map(mid => members[mid]?.name || 'Unknown');
             [...orphanNames].sort((a, b) => a.localeCompare(b)).forEach(n => {
-                if ((memberMeals[n] || 0) > 0 || (mealDepByName[n] || 0) > 0) t1Names.push(n);
+                if ((memberMeals[n] || 0) > 0 || (memberSpecial[n] || 0) > 0 || (mealDepByName[n] || 0) > 0 || (specialCostByName[n] || 0) > 0) t1Names.push(n);
             });
+            const bd = arr => arr.map(v => this.fmtNum(v)).join('+');
             let html = '';
-            let tTotMeals = 0, tTotCost = 0, tTotDep = 0, tTotBal = 0;
+            let tTotMeals = 0, tTotSpecial = 0, tTotCost = 0, tTotDep = 0, tTotBal = 0;
             t1Names.forEach(name => {
-                const total = memberMeals[name] || 0;
-                const cost = total * rate;
+                const meals = memberMeals[name] || 0;
+                const special = memberSpecial[name] || 0;
+                const total = meals + special;
+                const mealCost = meals * rate;
+                const specialCost = specialCostByName[name] || 0;
+                const cost = mealCost + specialCost;
+                const bazarPaid = mealPaidBy[name] || 0;
+                const ownDep = rawDepByName[name] || 0;
                 const dep = mealDepByName[name] || 0;
                 const bal = dep - cost;
-                tTotMeals += total; tTotCost += cost; tTotDep += dep; tTotBal += bal;
+                tTotMeals += meals; tTotSpecial += special; tTotCost += cost; tTotDep += dep; tTotBal += bal;
                 html += `<tr>
                     <td class="c-name">${this.esc(name)}</td>
-                    <td><strong>${this.fmtNum(total)}</strong></td>
-                    <td><strong>৳${this.fmtNum(cost)}</strong></td>
-                    <td><strong>৳${this.fmtNum(dep)}</strong></td>
-                    <td class="${bal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(bal)}</strong></td>
+                    <td><small class="msum-bd">${bd([meals, special])}</small><strong>${this.fmtNum(total)}</strong></td>
+                    <td><small class="msum-bd">${bd([mealCost, specialCost])}</small><strong>৳${this.fmtNum(cost)}</strong></td>
+                    <td><small class="msum-bd">${bd([bazarPaid, ownDep])}</small><strong>৳${this.fmtNum(dep)}</strong></td>
+                    <td class="msum-bal ${bal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(bal)}</strong></td>
                 </tr>`;
             });
             if (t1Names.length) html += `<tr class="adash-total">
                     <td class="c-name" data-lang-key="dash_table_total">Total</td>
-                    <td><strong>${this.fmtNum(tTotMeals)}</strong></td>
+                    <td><small class="msum-bd">${bd([tTotMeals, tTotSpecial])}</small><strong>${this.fmtNum(tTotMeals + tTotSpecial)}</strong></td>
                     <td><strong>৳${this.fmtNum(tTotCost)}</strong></td>
                     <td><strong>৳${this.fmtNum(tTotDep)}</strong></td>
-                    <td class="${tTotBal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(tTotBal)}</strong></td>
+                    <td class="msum-bal ${tTotBal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(tTotBal)}</strong></td>
                 </tr>`;
             rowsEl.innerHTML = html || '<tr><td colspan="5" class="empty-state">No data</td></tr>';
+            this._applyMealSummaryPrefs();
 
             const utilRows = document.getElementById('dash-utility-rows');
             const utilByName = {};
@@ -2775,6 +2829,7 @@ https://u2l.ai/MessManager
                     <td class="${tUBal < 0 ? 'neg' : 'pos'}"><strong>৳${this.fmtNum(tUBal)}</strong></td>
                 </tr>`;
             utilRows.innerHTML = utilHtml || '<tr><td colspan="6" class="empty-state">No data</td></tr>';
+            this._applyUtilityPrefs();
             this.applyLanguage();
             this.loadJoinRequests(members);
             this._hideSplash();
@@ -2951,6 +3006,7 @@ https://u2l.ai/MessManager
 
     async loadMeals() {
         if (!this.messId) return;
+        this._watchTablePrefs();
         const sm = this.getSelMonth();
         const month = sm.key;
         const daysInMonth = new Date(sm.year, sm.month + 1, 0).getDate();
@@ -2970,7 +3026,7 @@ https://u2l.ai/MessManager
             mids.forEach(mid => {
                 const m = members[mid] || {};
                 const name = m.name || 'Unknown';
-                memberData[mid] = { name, breakfast: new Array(daysInMonth).fill(0), lunch: new Array(daysInMonth).fill(0), dinner: new Array(daysInMonth).fill(0), breakfastTotal: 0, lunchTotal: 0, dinnerTotal: 0 };
+                memberData[mid] = { name, breakfast: new Array(daysInMonth).fill(0), lunch: new Array(daysInMonth).fill(0), dinner: new Array(daysInMonth).fill(0), special: new Array(daysInMonth).fill(0), breakfastTotal: 0, lunchTotal: 0, dinnerTotal: 0, specialTotal: 0 };
                 nameToMid[name] = mid;
             });
             Object.entries(allMeals).forEach(([dateKey, dayMeals]) => {
@@ -2982,28 +3038,32 @@ https://u2l.ai/MessManager
                     const mid = nameToMid[memberName];
                     let md = mid ? memberData[mid] : null;
                     if (!md) {
-                        if (!orphanData[memberName]) orphanData[memberName] = { name: memberName, readonly: true, breakfast: new Array(daysInMonth).fill(0), lunch: new Array(daysInMonth).fill(0), dinner: new Array(daysInMonth).fill(0), breakfastTotal: 0, lunchTotal: 0, dinnerTotal: 0 };
+                        if (!orphanData[memberName]) orphanData[memberName] = { name: memberName, readonly: true, breakfast: new Array(daysInMonth).fill(0), lunch: new Array(daysInMonth).fill(0), dinner: new Array(daysInMonth).fill(0), special: new Array(daysInMonth).fill(0), breakfastTotal: 0, lunchTotal: 0, dinnerTotal: 0, specialTotal: 0 };
                         md = orphanData[memberName];
                     }
                     const bf = m.breakfast || 0;
                     const lunch = m.lunch || 0;
                     const dinner = m.dinner || 0;
+                    const sp = m.special || 0;
                     md.breakfast[day] += bf;
                     md.lunch[day] += lunch;
                     md.dinner[day] += dinner;
                     md.breakfastTotal += bf;
                     md.lunchTotal += lunch;
                     md.dinnerTotal += dinner;
+                    md.special[day] += sp;
+                    md.specialTotal += sp;
                 });
             });
             if (!mids.length && !Object.keys(orphanData).length) { loader.innerHTML = '<p class="empty-state">No members</p>'; return; }
             const today = new Date().getDate();
-            const viewHide = JSON.parse(localStorage.getItem('meal_view_hide') || '{}');
+            const viewHide = this._mealViewHide();
             const showBf = !viewHide.breakfast;
             const showLc = !viewHide.lunch;
             const showDn = !viewHide.dinner;
-            const visibleRows = [showBf, showLc, showDn].filter(Boolean).length;
-            let html = '<thead><tr><th class="am-col-view" colspan="2"><span class="ameal-row-label" style="justify-content:center;cursor:pointer;color:var(--text)" onclick="App.showMealViewPopup()"><span class="material-icons-round" style="font-size:14px">tune</span> View</span></th>';
+            const showSp = !viewHide.special;
+            const canView = this._mealViewAllowed();
+            let html = '<thead><tr><th class="am-col-view" colspan="2"><span class="ameal-row-label ameal-row-view" style="justify-content:center;color:var(--text)' + (canView ? ';cursor:pointer' : ';cursor:default;opacity:.5') + '"' + (canView ? ' onclick="App.showMealViewPopup()"' : ' title="Only the manager or a user with Manage Permissions can change this"') + '><span class="material-icons-round" style="font-size:14px">tune</span> View</span></th>';
                     for (let d = 1; d <= daysInMonth; d++) html += `<th${d===today?' data-today="1" style="background:#c8ddf0;color:#000"':''}>${d}</th>`;
             html += '</tr></thead><tbody>';
             const colors = ['#0b3d91','#0d4fb5','#1565C0','#08306b','#3b7bdd','#1976D2'];
@@ -3011,24 +3071,27 @@ https://u2l.ai/MessManager
             if (showBf) mealTypes.push('breakfast');
             if (showLc) mealTypes.push('lunch');
             if (showDn) mealTypes.push('dinner');
+            // Special is a meal of its own, so it gets a row under Dinner instead of x+y in a cell.
+            if (showSp) mealTypes.push('special');
+            const visibleRows = mealTypes.length;
             const gridRows = mids.map(mid => memberData[mid]).concat(Object.values(orphanData).sort((a, b) => a.name.localeCompare(b.name)));
             gridRows.forEach((md, idx) => {
                 const bg = colors[idx % colors.length];
                 const readonly = !!md.readonly;
-                const total = md.breakfastTotal + md.lunchTotal + md.dinnerTotal;
-                const mealColors = { breakfast: { bg: '#fff8e1', color: '#e65100', icon: '☕', label: 'Breakfast' }, lunch: { bg: '#e8f5e9', color: '#2E7D32', icon: '🍔', label: 'Lunch' }, dinner: { bg: '#e3f2fd', color: '#1565C0', icon: '🍽', label: 'Dinner' } };
-                const classes = { breakfast: 'ameal-row-bf', lunch: 'ameal-row-lc', dinner: 'ameal-row-dn' };
+                const total = md.breakfastTotal + md.lunchTotal + md.dinnerTotal + md.specialTotal;
+                const mealColors = { breakfast: { bg: '#fff8e1', color: '#e65100', icon: '☕', label: 'Breakfast' }, lunch: { bg: '#e8f5e9', color: '#2E7D32', icon: '🍔', label: 'Lunch' }, dinner: { bg: '#e3f2fd', color: '#1565C0', icon: '🍽', label: 'Dinner' }, special: { bg: '#f3e5f5', color: '#6a1b9a', icon: '⭐', label: 'Special' } };
+                const classes = { breakfast: 'ameal-row-bf', lunch: 'ameal-row-lc', dinner: 'ameal-row-dn', special: 'ameal-row-sp' };
                 mealTypes.forEach((type, ri) => {
                     const mc = mealColors[type];
                     const isFirst = ri === 0;
                     html += `<tr class="${classes[type]}">`;
                     if (isFirst) html += `<td rowspan="${visibleRows}" class="am-col-name" style="background:${bg}${readonly ? ';opacity:.72' : ''}"><div class="ameal-mname">${this.esc(md.name)}</div><div class="ameal-mtotal">(${total})</div></td>`;
-                    html += `<td class="am-col-type" style="background:${mc.bg}"><div class="ameal-row-label"><span style="font-size:12px">${mc.icon}</span><span class="ameal-row-count" style="color:${mc.color}${md[type+'Total']===0?';color:#ccc':''}">${md[type+'Total']}</span><span style="color:${mc.color};font-size:10px">${mc.label}</span></div></td>`;
+                    html += `<td class="am-col-type" style="background:${mc.bg}"><div class="ameal-row-label"><span class="ameal-row-icon">${mc.icon}</span><span class="ameal-row-count" style="color:${mc.color}${md[type+'Total']===0?';color:#ccc':''}">${md[type+'Total']}</span><span class="ameal-row-name">${mc.label}</span></div></td>`;
                     for (let d = 0; d < daysInMonth; d++) {
                         const v = md[type][d];
                         const cls = d + 1 === today ? ' class="ame-day-today"' : '';
                         const dateKey = `${month}-${String(d + 1).padStart(2, '0')}`;
-                        const click = (v && !readonly) ? ` onclick="App.mealCellClick(event,'${md.name.replace(/'/g,"\\'")}','${dateKey}','${type}',${v})"` : '';
+                        const click = (v && !readonly) ? ` onclick="App.mealCellClick(event,${JSON.stringify(md.name).replace(/"/g,'&quot;')},'${dateKey}','${type}',${v},0)"` : '';
                         const vStyle = v ? (readonly ? 'font-weight:600;cursor:default;color:#9aa0a6' : 'font-weight:600;cursor:pointer') : '';
                         html += `<td${cls}${click} style="${vStyle}">${v || ''}</td>`;
                     }
@@ -3043,7 +3106,7 @@ https://u2l.ai/MessManager
             if (todayTh) { requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     const headerW = scroll.querySelector('th.am-col-view')?.offsetWidth || 160;
-                    const typeW = 90;
+                    const typeW = 100;
                     const stickyTotal = headerW + typeW;
                     const viewWidth = scroll.clientWidth - stickyTotal;
                     const cellCenter = todayTh.offsetLeft + todayTh.offsetWidth / 2 - stickyTotal;
@@ -3068,9 +3131,15 @@ https://u2l.ai/MessManager
         this.navigate('adddeposit');
     },
 
+    _aamMembers: null,
+    _aamOrphans: null,
+    aamTab: 'meal',
+
     async loadAddMeal() {
         if (!this.messId) return;
+        this._watchTablePrefs();
         if (!this.checkPerm('mealEntry')) { this.navigate('meals'); return; }
+        this.aamTab = 'meal';
         const now = new Date();
         const dateKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         if (!this._aamDate) this._aamDate = dateKey;
@@ -3081,56 +3150,194 @@ https://u2l.ai/MessManager
         const snap = await db.ref(`messes/${this.messId}/members`).once('value');
         const members = snap.val() || {};
         const mids = Object.keys(members).filter(id => id.startsWith('member_')).sort((a, b) => (members[a]?.name || '').localeCompare(members[b]?.name || ''));
-        const colors = ['#0b3d91','#0d4fb5','#1565C0','#08306b','#3b7bdd','#1976D2'];
+        this._aamMembers = mids.map(id => ({ name: (members[id] || {}).name || 'Unknown' }));
+        const memberNames = this._aamMembers.map(m => m.name);
+        if (!this._aamSpecialMoneyBy) this._aamSpecialMoneyBy = 'Manager';
+        if (!this._aamSpecialSelected) this._aamSpecialSelected = memberNames.slice();
+        else this._aamSpecialSelected = this._aamSpecialSelected.filter(n => memberNames.includes(n));
         this._aamData = {};
-        let cardsHtml = '';
-        mids.forEach((mid, idx) => {
-            const m = members[mid] || {};
-            const name = m.name || 'Unknown';
-            const bg = colors[idx % colors.length];
-            this._aamData[name] = { breakfast: 0, lunch: 0, dinner: 0 };
-            cardsHtml += `<div class="aam-card"><div class="aam-card-top"><div class="aam-avatar" style="background:${bg}20"><span style="color:${bg};font-size:18px;font-weight:700">${name.charAt(0).toUpperCase()}</span></div><span class="aam-name">${this.esc(name)}</span><span class="aam-total" id="aam-total-${idx}">Total: 0</span></div><div class="aam-meals-row"><div class="aam-meal-col"><label>Breakfast</label><div class="aam-counter"><button onclick="App.aamAdjust(${idx},'${name}','breakfast',-1)">-</button><span class="aam-val" id="aam-bf-${idx}">0</span><button onclick="App.aamAdjust(${idx},'${name}','breakfast',1)">+</button></div></div><div class="aam-meal-col"><label>Lunch</label><div class="aam-counter"><button onclick="App.aamAdjust(${idx},'${name}','lunch',-1)">-</button><span class="aam-val" id="aam-ln-${idx}">0</span><button onclick="App.aamAdjust(${idx},'${name}','lunch',1)">+</button></div></div><div class="aam-meal-col"><label>Dinner</label><div class="aam-counter"><button onclick="App.aamAdjust(${idx},'${name}','dinner',-1)">-</button><span class="aam-val" id="aam-dn-${idx}">0</span><button onclick="App.aamAdjust(${idx},'${name}','dinner',1)">+</button></div></div></div></div>`;
+        this._aamOrphans = [];
+        const mealSnap = await db.ref(`messes/${this.messId}/meals/${this._aamDate}`).once('value');
+        const existing = mealSnap.val() || {};
+        this._aamMembers.forEach(m => {
+            const em = existing[m.name] || {};
+            this._aamData[m.name] = {
+                breakfast: em.breakfast || 0, lunch: em.lunch || 0,
+                dinner: em.dinner || 0, special: em.special || 0
+            };
         });
-        document.getElementById('aam-member-cards').innerHTML = cardsHtml || '<p class="empty-state" style="padding:20px;text-align:center;color:#999">No members</p>';
-        try {
-            const mealSnap = await db.ref(`messes/${this.messId}/meals/${this._aamDate}`).once('value');
-            const existing = mealSnap.val() || {};
-            mids.forEach((mid, idx) => {
-                const name = members[mid]?.name || 'Unknown';
-                const em = existing[name] || {};
-                if (em.breakfast || em.lunch || em.dinner) {
-                    if (this._aamData[name]) {
-                        this._aamData[name].breakfast = em.breakfast || 0;
-                        this._aamData[name].lunch = em.lunch || 0;
-                        this._aamData[name].dinner = em.dinner || 0;
-                    }
-                    const bfEl = document.getElementById(`aam-bf-${idx}`);
-                    const lnEl = document.getElementById(`aam-ln-${idx}`);
-                    const dnEl = document.getElementById(`aam-dn-${idx}`);
-                    const totEl = document.getElementById(`aam-total-${idx}`);
-                    if (bfEl) bfEl.textContent = em.breakfast || 0;
-                    if (lnEl) lnEl.textContent = em.lunch || 0;
-                    if (dnEl) dnEl.textContent = em.dinner || 0;
-                    if (totEl) totEl.textContent = `Total: ${(em.breakfast||0)+(em.lunch||0)+(em.dinner||0)}`;
-                }
-            });
-            const curNameSet = new Set(mids.map(id => members[id]?.name || 'Unknown'));
-            const roNames = Object.keys(existing).filter(n => n !== 'Manager' && !curNameSet.has(n) && ((existing[n]?.breakfast || 0) + (existing[n]?.lunch || 0) + (existing[n]?.dinner || 0)) > 0).sort((a, b) => a.localeCompare(b));
-            if (roNames.length) {
-                const roHtml = roNames.map(n => {
-                    const em = existing[n] || {};
-                    const bf = em.breakfast || 0, ln = em.lunch || 0, dn = em.dinner || 0;
-                    const col = v => `<div class="aam-meal-col"><label>${v[0]}</label><div class="aam-counter" style="border-color:#ddd"><span class="aam-val" style="color:#9aa0a6">${v[1]}</span></div></div>`;
-                    return `<div class="aam-card" style="opacity:.72;border-style:dashed"><div class="aam-card-top"><div class="aam-avatar" style="background:#eceff1"><span style="color:#999;font-size:18px;font-weight:700">${(n.charAt(0) || '?').toUpperCase()}</span></div><span class="aam-name">${this.esc(n)}</span><span class="aam-total" style="color:#999">Total: ${bf + ln + dn}</span></div><div class="aam-meals-row">${col(['Breakfast', bf])}${col(['Lunch', ln])}${col(['Dinner', dn])}</div></div>`;
-                }).join('');
-                const cardsEl = document.getElementById('aam-member-cards');
-                if (cardsEl) cardsEl.insertAdjacentHTML('beforeend', roHtml);
+        const curNameSet = new Set(this._aamMembers.map(m => m.name));
+        Object.keys(existing)
+            .filter(n => n !== 'Manager' && !curNameSet.has(n) && ((existing[n]?.breakfast || 0) + (existing[n]?.lunch || 0) + (existing[n]?.dinner || 0)) > 0)
+            .sort((a, b) => a.localeCompare(b))
+            .forEach(n => this._aamOrphans.push({
+                name: n,
+                breakfast: existing[n].breakfast || 0,
+                lunch: existing[n].lunch || 0,
+                dinner: existing[n].dinner || 0,
+                special: existing[n].special || 0
+            }));
+        /* Replay the Special Meal cost saved for this date so the Total cost
+           amount, Expense from and Divided to show up and stay editable. */
+        const bazSnap = await db.ref(`messes/${this.messId}/bazarItems`).once('value');
+        const bazItems = bazSnap.val() || {};
+        const specialKeys = [], specialNames = [];
+        let specialTotal = 0, specialBy = '';
+        Object.keys(bazItems).forEach(k => {
+            const b = bazItems[k] || {};
+            if ((b.name || '').trim().toLowerCase() !== 'special meal') return;
+            if ((b.date || '') !== this._aamDate) return;
+            specialKeys.push(k);
+            specialTotal += parseFloat(b.cost) || 0;
+            const to = (b.splitWith || '').trim();
+            if (to && !specialNames.includes(to)) specialNames.push(to);
+            if (!specialBy && b.memberId) specialBy = b.memberId;
+        });
+        this._aamSpecialKeys = specialKeys;
+        this._aamSpecialAmount = specialTotal > 0 ? String(Math.round(specialTotal * 100) / 100) : '';
+        if (specialKeys.length) {
+            const sel = specialNames.filter(n => memberNames.includes(n));
+            this._aamSpecialSelected = sel.length ? sel : memberNames.slice();
+            this._aamSpecialMoneyBy = specialBy || this._aamSpecialMoneyBy;
+        }
+        this._renderAamSpecialPanel();
+        this._renderAamCards();
+        if (this._aamEditName) {
+            this._aamEditName = null;
+            this._aamEditType = null;
+        }
+    },
+
+    /* Meal / Special Meal pills at the top of Add Meal, using the same row as
+       Add Expense. Switching only redraws the cards, so counts typed on the
+       other tab are kept. */
+    aamSwitchTab(tab) {
+        this.aamTab = tab === 'special' ? 'special' : 'meal';
+        document.querySelectorAll('#page-addmeal .bz-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === this.aamTab));
+        this._renderAamCards();
+    },
+
+    /* Special Meal takes the expense block from Add Expense (total cost,
+       Expense from, Divided to) above its own member counters. */
+    _renderAamSpecialPanel() {
+        const el = document.getElementById('aam-special-panel');
+        if (!el) return;
+        const names = (this._aamMembers || []).map(m => m.name);
+        const sel = this._aamSpecialSelected || [];
+        const payer = this._aamSpecialMoneyBy || 'Manager';
+        el.innerHTML = `
+            <div class="dep-label">Total cost amount</div>
+            <div class="dep-input-wrap" style="margin:6px 0"><span style="font-size:20px;font-weight:700">৳</span><input class="bz-input" type="number" id="aam-special-amount" placeholder="Total cost amount" value="${this.esc(this._aamSpecialAmount || '')}" oninput="App._aamSpecialAmount=this.value"></div>
+            <div class="dep-label">Expense from:</div>
+            <div class="bz-util-money-wrap"><select id="aam-special-money-by" class="bz-util-money-select" onchange="App._aamSpecialMoneyBy=this.value">
+                ${['Manager'].concat(names).map(n => `<option value="${n}"${n === payer ? ' selected' : ''}>${n}</option>`).join('')}
+            </select><span class="material-icons-round">expand_more</span></div>
+            <div class="dep-label" style="margin-top:6px">Divided to:</div>
+            <div class="bz-util-members">
+                <div class="bz-util-selectall" onclick="App.aamToggleAll()">
+                    <input type="checkbox" id="aam-selectall-cb" ${names.length && sel.length === names.length ? 'checked' : ''}>
+                    <span>Select all</span>
+                    <span class="bz-util-count" id="aam-util-count">${sel.length}/${names.length} selected</span>
+                    <button type="button" class="aam-select-caret" id="aam-select-caret" onclick="event.stopPropagation();App.aamToggleList()"><span class="material-icons-round">expand_more</span></button>
+                </div>
+                <div id="aam-util-members-list">${names.map(n => `<label class="bz-util-member"><input type="checkbox" data-member="${n}" ${sel.includes(n) ? 'checked' : ''} onchange="App.aamToggleMember(this)"><span>${n}</span></label>`).join('')}</div>
+            </div>`;
+        this._aamUpdateSpecialCount();
+    },
+
+    /* All selected collapses the name list (the row stays as a summary);
+       anything less than all selected shows every name again. The caret
+       flips the list by hand without touching the selection. */
+    aamToggleList() {
+        this._aamListOpen = !this._aamListOpen;
+        this._aamApplyListState();
+    },
+
+    _aamApplyListState() {
+        const list = document.getElementById('aam-util-members-list');
+        const caret = document.getElementById('aam-select-caret');
+        const names = (this._aamMembers || []).map(m => m.name);
+        const sel = this._aamSpecialSelected || [];
+        if (this._aamListOpen === undefined) this._aamListOpen = !(names.length > 0 && sel.length === names.length);
+        if (list) list.style.display = this._aamListOpen ? '' : 'none';
+        if (caret) caret.querySelector('.material-icons-round').textContent = this._aamListOpen ? 'expand_less' : 'expand_more';
+    },
+
+    aamToggleMember(cb) {
+        const name = cb.dataset.member;
+        const set = new Set(this._aamSpecialSelected || []);
+        if (cb.checked) set.add(name); else set.delete(name);
+        this._aamSpecialSelected = [...set];
+        this._aamUpdateSpecialCount();
+    },
+
+    aamToggleAll() {
+        const boxes = [...document.querySelectorAll('#aam-special-panel .bz-util-member input')];
+        const allOn = boxes.length > 0 && boxes.every(b => b.checked);
+        boxes.forEach(b => { b.checked = !allOn; });
+        const names = (this._aamMembers || []).map(m => m.name);
+        this._aamSpecialSelected = allOn ? [] : names.slice();
+        this._aamUpdateSpecialCount();
+    },
+
+    aamToggleAllCb(checked) {
+        const boxes = [...document.querySelectorAll('#aam-special-panel .bz-util-member input')];
+        boxes.forEach(b => { b.checked = !!checked; });
+        const names = (this._aamMembers || []).map(m => m.name);
+        this._aamSpecialSelected = checked ? names.slice() : [];
+        this._aamUpdateSpecialCount();
+    },
+
+    _aamUpdateSpecialCount() {
+        const names = (this._aamMembers || []).map(m => m.name);
+        const sel = this._aamSpecialSelected || [];
+        const el = document.getElementById('aam-util-count');
+        if (el) el.textContent = `${sel.length}/${names.length} selected`;
+        const allOn = names.length > 0 && sel.length === names.length;
+        const sa = document.getElementById('aam-selectall-cb');
+        if (sa) sa.checked = allOn;
+        this._aamListOpen = !allOn;
+        this._aamApplyListState();
+    },
+
+    _renderAamCards() {
+        const cardsEl = document.getElementById('aam-member-cards');
+        if (!cardsEl) return;
+        const special = this.aamTab === 'special';
+        const viewHide = this._mealViewHide();
+        const showBf = !viewHide.breakfast;
+        const showLc = !viewHide.lunch;
+        const showDn = !viewHide.dinner;
+        const colors = ['#0b3d91','#0d4fb5','#1565C0','#08306b','#3b7bdd','#1976D2'];
+        document.querySelectorAll('#page-addmeal .bz-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === this.aamTab));
+        const lbl = document.getElementById('aam-section-label');
+        if (lbl) lbl.textContent = special ? 'Set special meal counts' : 'Set member meal counts';
+        const panel = document.getElementById('aam-special-panel');
+        if (panel) panel.style.display = special ? '' : 'none';
+        let cardsHtml = '';
+        (this._aamMembers || []).forEach((m, idx) => {
+            const name = m.name;
+            const bg = colors[idx % colors.length];
+            const d = this._aamData[name] || { breakfast: 0, lunch: 0, dinner: 0, special: 0 };
+            const total = d.breakfast + d.lunch + d.dinner + d.special;
+            let mealsHtml = '';
+            if (special) {
+                mealsHtml = `<div class="aam-meal-col"><label>Special</label><div class="aam-counter"><button onclick="App.aamAdjust(${idx},'${name}','special',-1)">-</button><span class="aam-val" id="aam-sp-${idx}">${d.special}</span><button onclick="App.aamAdjust(${idx},'${name}','special',1)">+</button></div></div>`;
+            } else {
+                if (showBf) mealsHtml += `<div class="aam-meal-col"><label>Breakfast</label><div class="aam-counter"><button onclick="App.aamAdjust(${idx},'${name}','breakfast',-1)">-</button><span class="aam-val" id="aam-bf-${idx}">${d.breakfast}</span><button onclick="App.aamAdjust(${idx},'${name}','breakfast',1)">+</button></div></div>`;
+                if (showLc) mealsHtml += `<div class="aam-meal-col"><label>Lunch</label><div class="aam-counter"><button onclick="App.aamAdjust(${idx},'${name}','lunch',-1)">-</button><span class="aam-val" id="aam-ln-${idx}">${d.lunch}</span><button onclick="App.aamAdjust(${idx},'${name}','lunch',1)">+</button></div></div>`;
+                if (showDn) mealsHtml += `<div class="aam-meal-col"><label>Dinner</label><div class="aam-counter"><button onclick="App.aamAdjust(${idx},'${name}','dinner',-1)">-</button><span class="aam-val" id="aam-dn-${idx}">${d.dinner}</span><button onclick="App.aamAdjust(${idx},'${name}','dinner',1)">+</button></div></div>`;
             }
-            if (this._aamEditName) {
-                this._aamEditName = null;
-                this._aamEditType = null;
-            }
-        } catch (e) { console.error('loadAddMeal load existing:', e); }
+            cardsHtml += `<div class="aam-card"><div class="aam-card-top"><div class="aam-avatar" style="background:${bg}20"><span style="color:${bg};font-size:18px;font-weight:700">${name.charAt(0).toUpperCase()}</span></div><span class="aam-name">${this.esc(name)}</span><span class="aam-total" id="aam-total-${idx}">Total: ${total}</span></div><div class="aam-meals-row">${mealsHtml}</div></div>`;
+        });
+        (this._aamOrphans || []).forEach(n => {
+            const col = v => `<div class="aam-meal-col"><label>${v[0]}</label><div class="aam-counter" style="border-color:#ddd"><span class="aam-val" style="color:#9aa0a6">${v[1]}</span></div></div>`;
+            const cols = special
+                ? (n.special ? col(['Special', n.special]) : '')
+                : (showBf ? col(['Breakfast', n.breakfast]) : '') + (showLc ? col(['Lunch', n.lunch]) : '') + (showDn ? col(['Dinner', n.dinner]) : '');
+            cardsHtml += `<div class="aam-card" style="opacity:.72;border-style:dashed"><div class="aam-card-top"><div class="aam-avatar" style="background:#eceff1"><span style="color:#999;font-size:18px;font-weight:700">${(n.name.charAt(0) || '?').toUpperCase()}</span></div><span class="aam-name">${this.esc(n.name)}</span><span class="aam-total" style="color:#999">Total: ${n.breakfast + n.lunch + n.dinner + n.special}</span></div><div class="aam-meals-row">${cols}</div></div>`;
+        });
+        cardsEl.innerHTML = cardsHtml || '<p class="empty-state" style="padding:20px;text-align:center;color:#999">No members</p>';
     },
 
     async showAddMeal(preType) {
@@ -3139,7 +3346,7 @@ https://u2l.ai/MessManager
         const snap = await db.ref(`messes/${this.messId}/members`).once('value');
         const members = snap.val() || {};
         const mids = Object.keys(members).filter(id => id.startsWith('member_')).sort((a, b) => (members[a]?.name || '').localeCompare(members[b]?.name || ''));
-        const viewHide = JSON.parse(localStorage.getItem('meal_view_hide') || '{}');
+        const viewHide = this._mealViewHide();
         const showBf = !viewHide.breakfast;
         const showLc = !viewHide.lunch;
         const showDn = !viewHide.dinner;
@@ -3172,10 +3379,10 @@ https://u2l.ai/MessManager
         if (!this._aamData || !this._aamData[name]) return;
         const v = Math.max(0, (this._aamData[name][field] || 0) + delta);
         this._aamData[name][field] = v;
-        const map = { breakfast: 'bf', lunch: 'ln', dinner: 'dn' };
+        const map = { breakfast: 'bf', lunch: 'ln', dinner: 'dn', special: 'sp' };
         const el = document.getElementById(`aam-${map[field]}-${idx}`);
         if (el) el.textContent = v;
-        const total = this._aamData[name].breakfast + this._aamData[name].lunch + this._aamData[name].dinner;
+        const total = this._aamData[name].breakfast + this._aamData[name].lunch + this._aamData[name].dinner + (this._aamData[name].special || 0);
         const tel = document.getElementById(`aam-total-${idx}`);
         if (tel) tel.textContent = `Total: ${total}`;
     },
@@ -3189,19 +3396,7 @@ https://u2l.ai/MessManager
         if (this.currentPage === 'addmeal') this.loadAddMeal();
     },
 
-    aamPickDate() {
-        const old = document.getElementById('aam-date-hid');
-        if (old) old.remove();
-        const input = document.createElement('input');
-        input.type = 'date';
-        input.id = 'aam-date-hid';
-        input.value = this._aamDate;
-        input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0';
-        input.oninput = () => this.aamOnDateChange(input.value);
-        document.body.appendChild(input);
-        input.click();
-        setTimeout(() => { try { input.showPicker(); } catch(e) {} }, 100);
-    },
+    aamPickDate() { this._pickAppDate(this._aamDate, v => this.aamOnDateChange(v)); },
 
     async aamSave() {
         this._hintOffline();
@@ -3209,35 +3404,66 @@ https://u2l.ai/MessManager
         const dateKey = this._aamDate;
         let saved = 0;
         const userName = this.currentUser?.displayName || 'Unknown';
+        const specialAmount = parseFloat(this._aamSpecialAmount) || 0;
+        const specialSelected = this._aamSpecialSelected || [];
+        if (specialAmount > 0 && !specialSelected.length) { this.toast('Divided to: select at least one member', 'error'); return; }
         for (const [name, m] of Object.entries(this._aamData)) {
-            if (m.breakfast || m.lunch || m.dinner) {
-                await db.ref(`messes/${this.messId}/meals/${dateKey}/${name}`).set({ lunch: m.lunch, dinner: m.dinner, breakfast: m.breakfast });
+            if (m.breakfast || m.lunch || m.dinner || m.special) {
+                const mealPayload = { lunch: m.lunch, dinner: m.dinner, breakfast: m.breakfast };
+                if (m.special !== undefined) mealPayload.special = m.special || 0;
+                await db.ref(`messes/${this.messId}/meals/${dateKey}/${name}`).update(mealPayload);
                 const meals = [];
                 if (m.breakfast) meals.push('Breakfast');
                 if (m.lunch) meals.push('Lunch');
                 if (m.dinner) meals.push('Dinner');
+                if (m.special) meals.push('Special');
                 await db.ref(`messes/${this.messId}/mealHistory`).push({
                     member: name, date: dateKey, type: meals.join(', '),
-                    count: (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0),
+                    count: (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0) + (m.special || 0),
                     action: 'added', user: userName, createdAt: Date.now()
                 });
                 saved++;
             }
         }
+        if (specialAmount > 0) {
+            if (!this.canDo('bazarEntry')) {
+                this.toast('Cost not added: Manage Expenses permission needed', 'error', 'toast-perm');
+            } else {
+                const share = Math.round((specialAmount / specialSelected.length) * 100) / 100;
+                /* Editing a saved cost for this date replaces its old shares. */
+                for (const k of (this._aamSpecialKeys || [])) {
+                    await db.ref(`messes/${this.messId}/bazarItems/${k}`).remove();
+                }
+                this._aamSpecialKeys = [];
+                for (const name of specialSelected) {
+                    await db.ref(`messes/${this.messId}/bazarItems`).push({
+                        name: 'Special Meal', cost: share,
+                        memberId: this._aamSpecialMoneyBy || 'Manager', splitWith: name,
+                        date: dateKey, category: 'bazar', addedBy: userName, createdAt: Date.now()
+                    });
+                }
+                this._aamSpecialAmount = '';
+                saved += specialSelected.length;
+            }
+        }
         if (saved) { try { this.closeModal(); } catch(e) {} this._skipCache.add('meals_month'); this._cacheClearAll(); this.toast(`${saved} member meal${saved>1?'s':''} saved!`, 'success'); this.navigate('meals'); }
         else this.toast('Set at least one meal', 'error');
+        if (specialAmount > 0) { const el = document.getElementById('aam-special-amount'); if (el) el.value = ''; }
     },
 
-    mealCellClick(e, memberName, dateKey, mealType, currentVal) {
+    mealCellClick(e, memberName, dateKey, mealType, currentVal, specialVal) {
         e.stopPropagation();
         if (!this.checkPerm('mealEntry')) return;
         const existing = document.querySelector('.meal-cell-popup');
         if (existing) existing.remove();
         const popup = document.createElement('div');
         popup.className = 'meal-cell-popup';
-        popup.innerHTML = `
-            <button onclick="App.mealDeleteCell('${memberName.replace(/'/g,"\\'")}','${dateKey}','${mealType}',${currentVal})"><span class="material-icons-round">delete</span> Delete</button>
-        `;
+        const label = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+        const safeName = memberName.replace(/'/g, "\\'");
+        let btns = '';
+        if (currentVal > 0) btns += `<button onclick="App.mealDeleteCell('${safeName}','${dateKey}','${mealType}',${currentVal})"><span class="material-icons-round">delete</span> Delete ${label}</button>`;
+        if (specialVal > 0) btns += `<button onclick="App.mealDeleteSpecial('${safeName}','${dateKey}',${specialVal})"><span class="material-icons-round">delete</span> Delete special (+${specialVal})</button>`;
+        popup.innerHTML = btns;
         document.body.appendChild(popup);
         const rect = e.target.getBoundingClientRect();
         popup.style.top = (rect.bottom + 4) + 'px';
@@ -3264,6 +3490,24 @@ https://u2l.ai/MessManager
         } catch (err) { console.error(err); this.toast('Delete failed', 'error'); }
     },
 
+    async mealDeleteSpecial(memberName, dateKey, count) {
+        const popup = document.querySelector('.meal-cell-popup');
+        if (popup) popup.remove();
+        if (!this.messId) return;
+        const userName = this.currentUser?.displayName || 'Unknown';
+        try {
+            await db.ref(`messes/${this.messId}/meals/${dateKey}/${memberName}/special`).set(0);
+            await db.ref(`messes/${this.messId}/mealHistory`).push({
+                member: memberName, date: dateKey, type: 'Special',
+                count: count, action: 'removed', user: userName, createdAt: Date.now()
+            });
+            this.toast(`Special meal deleted for ${memberName}`, 'success');
+            this._skipCache.add('meals_month');
+            this._cacheClearAll();
+            this.loadMeals();
+        } catch (err) { console.error(err); this.toast('Delete failed', 'error'); }
+    },
+
     mealEditCell(memberName, dateKey, mealType) {
         const popup = document.querySelector('.meal-cell-popup');
         if (popup) popup.remove();
@@ -3273,32 +3517,233 @@ https://u2l.ai/MessManager
         this.navigate('addmeal');
     },
 
+    /* ---- Meal Summary table: "Customise table" popup ----
+       Same look as Meal Entry -> View Settings, saved per mess on this device,
+       and only the manager (or a user with Manage Permissions) can change it. */
+    _msumPrefs: null,
+    _msumPrefsKey: null,
+    _mealSummaryAllowed() { return this.userRole === 'admin' || this.canDo('togglePerms'); },
+    _msumPrefKey() { return 'meal_summary_prefs_' + (this.messId || 'local'); },
+    msumPrefs() {
+        const key = this._msumPrefKey();
+        if (!this._msumPrefs || this._msumPrefsKey !== key) {
+            let p = {};
+            const hasRemote = !!this._tablePrefs && this._tablePrefsMess === this.messId;
+            const remote = hasRemote ? this._tablePrefs.summary : null;
+            // The mess value wins; the device copy is only used before it loads.
+            if (remote) { p = remote; }
+            else if (!hasRemote) { try { p = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { p = {}; } }
+            this._msumPrefs = {
+                breakdown: p.breakdown !== false,
+                grid: p.grid !== undefined ? p.grid !== false : p.vlines !== false,
+                bold: p.bold === true
+            };
+            this._msumPrefsKey = key;
+        }
+        return this._msumPrefs;
+    },
+    _msumSavePrefs() { try { localStorage.setItem(this._msumPrefKey(), JSON.stringify(this.msumPrefs())); } catch (e) {} },
+
+    /* Both customisations belong to the mess, not the device: the manager (or a
+       user with Manage Permissions) changes them once and every member sees the
+       same table. They live at messes/<id>/settings/tablePrefs and are watched
+       live, so an open table updates without a reload. */
+    _watchTablePrefs() {
+        if (!this.messId || typeof db === 'undefined' || !db) return;
+        if (this._tablePrefsWatched === this.messId) return;
+        if (this._tablePrefsRef && typeof this._tablePrefsRef.off === 'function') {
+            try { this._tablePrefsRef.off(); } catch (e) {}
+        }
+        this._tablePrefsWatched = this.messId;
+        this._tablePrefs = null;
+        this._tablePrefsMess = this.messId;
+        this._msumPrefs = null;
+        this._msumPrefsKey = null;
+        const ref = db.ref(`messes/${this.messId}/settings/tablePrefs`);
+        this._tablePrefsRef = ref;
+        ref.on('value', snap => {
+            if (this._tablePrefsWatched !== this.messId) return;
+            const v = snap.val() || {};
+            const prevRows = JSON.stringify((this._tablePrefs || {}).mealRows || {});
+            this._tablePrefs = v;
+            this._tablePrefsMess = this.messId;
+            this._msumPrefs = null;
+            this._msumPrefsKey = null;
+            this._applyMealSummaryPrefs();
+            this._msumSavePrefs();
+            if (JSON.stringify(v.mealRows || {}) !== prevRows && (this.currentPage === 'meals' || this.currentPage === 'addmeal')) {
+                this.loadMeals();
+            }
+        }, () => {});
+    },
+    _saveTablePrefs(patch) {
+        if (!this.messId || typeof db === 'undefined' || !db) return;
+        try {
+            db.ref(`messes/${this.messId}/settings/tablePrefs`).update(patch).catch(() => {});
+        } catch (e) {}
+    },
+    _applyMealSummaryPrefs() {
+        const t = document.getElementById('dash-meal-summary');
+        const head = document.getElementById('msum-custom-btn');
+        if (head) head.style.display = this._mealSummaryAllowed() ? '' : 'none';
+        if (!t) return;
+        const p = this.msumPrefs();
+        t.classList.toggle('msum-bd-on', !!p.breakdown);
+        t.classList.toggle('msum-grid', !!p.grid);
+        t.classList.toggle('msum-bold', !!p.bold);
+        this._applyUtilityPrefs();
+    },
+
+    /* Rent, Utilities & Others gets the same Customise table popup, minus the
+       cost breakdown option. It is saved mess-wide next to the Meal Summary
+       preferences and follows the same manager / Manage Permissions rule. */
+    _utilPrefKey() { return 'util_summary_prefs_' + (this.messId || 'local'); },
+    _utilPrefs() {
+        let p = {};
+        const hasRemote = !!this._tablePrefs && this._tablePrefsMess === this.messId;
+        if (hasRemote && this._tablePrefs.utility) p = this._tablePrefs.utility;
+        else if (!hasRemote) { try { p = JSON.parse(localStorage.getItem(this._utilPrefKey()) || '{}') || {}; } catch (e) { p = {}; } }
+        return { grid: p.grid !== false, bold: p.bold === true };
+    },
+    _applyUtilityPrefs() {
+        const btn = document.getElementById('util-custom-btn');
+        if (btn) btn.style.display = this._mealSummaryAllowed() ? '' : 'none';
+        const t = document.getElementById('dash-util-table');
+        if (!t) return;
+        const p = this._utilPrefs();
+        t.classList.toggle('msum-grid', !!p.grid);
+        t.classList.toggle('msum-bold', !!p.bold);
+    },
+    openUtilitySummaryCustomise() {
+        if (!this._mealSummaryAllowed()) {
+            return this.toast('Only the manager or a user with Manage Permissions can change this.', 'error', 'toast-perm');
+        }
+        const p = this._utilPrefs();
+        const rows = [
+            { k: 'grid', title: 'Show Grid Lines', desc: 'Vertical and horizontal lines between the cells' },
+            { k: 'bold', title: 'Bold every figure', desc: 'Only the name and the balance' }
+        ];
+        const body = document.getElementById('modal-body');
+        body.innerHTML = `
+            <p style="margin:0 0 16px;font-size:14px;color:#777">Choose what the Rent, Utilities & Others table shows:</p>
+            <div style="display:flex;flex-direction:column;gap:12px">
+                ${rows.map(r => `
+                <label class="mv-opt">
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-size:15px;font-weight:600">${r.title}</span>
+                        <span style="display:block;font-size:12.5px;color:#777">${r.desc}</span>
+                    </span>
+                    <span class="toggle"><input type="checkbox" id="util-${r.k}" ${p[r.k] ? 'checked' : ''}><span class="toggle-slider"></span></span>
+                </label>`).join('')}
+            </div>`;
+        document.getElementById('modal-title').textContent = 'Customise table';
+        document.getElementById('modal-footer').innerHTML = '';
+        document.getElementById('modal-overlay').classList.add('active');
+        rows.forEach(r => {
+            const cb = document.getElementById('util-' + r.k);
+            cb.onchange = () => {
+                if (!this._mealSummaryAllowed()) { cb.checked = !cb.checked; return; }
+                const pref = this._utilPrefs();
+                pref[r.k] = cb.checked;
+                try { localStorage.setItem(this._utilPrefKey(), JSON.stringify(pref)); } catch (e) {}
+                this._applyUtilityPrefs();
+                this._saveTablePrefs({ utility: { grid: !!pref.grid, bold: !!pref.bold } });
+            };
+        });
+    },
+    openMealSummaryCustomise() {
+        if (!this._mealSummaryAllowed()) {
+            return this.toast('Only the manager or a user with Manage Permissions can change this.', 'error', 'toast-perm');
+        }
+        const p = this.msumPrefs();
+        const rows = [
+            { k: 'breakdown', title: 'Show the cost breakdown', desc: 'Meals, bazar and deposits under each name' },
+            { k: 'grid', title: 'Show Grid Lines', desc: 'Vertical and horizontal lines between the cells' },
+            { k: 'bold', title: 'Bold every figure', desc: 'Only the name and the balance' }
+        ];
+        const body = document.getElementById('modal-body');
+        body.innerHTML = `
+            <p style="margin:0 0 16px;font-size:14px;color:#777">Choose what the Meal Summary table shows:</p>
+            <div style="display:flex;flex-direction:column;gap:12px">
+                ${rows.map(r => `
+                <label class="mv-opt">
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-size:15px;font-weight:600">${r.title}</span>
+                        <span style="display:block;font-size:12.5px;color:#777">${r.desc}</span>
+                    </span>
+                    <span class="toggle"><input type="checkbox" id="msum-${r.k}" ${p[r.k] ? 'checked' : ''}><span class="toggle-slider"></span></span>
+                </label>`).join('')}
+            </div>`;
+        document.getElementById('modal-title').textContent = 'Customise table';
+        document.getElementById('modal-footer').innerHTML = '';
+        document.getElementById('modal-overlay').classList.add('active');
+        rows.forEach(r => {
+            const cb = document.getElementById('msum-' + r.k);
+            cb.onchange = () => {
+                if (!this._mealSummaryAllowed()) { cb.checked = !cb.checked; return; }
+                const pref = this.msumPrefs();
+                pref[r.k] = cb.checked;
+                this._msumSavePrefs();
+                this._applyMealSummaryPrefs();
+                this._saveTablePrefs({ summary: { breakdown: !!pref.breakdown, grid: !!pref.grid, bold: !!pref.bold } });
+            };
+        });
+    },
+
+    /* The Meal Entry -> View choice (which meal rows are shown) can only be
+       changed by the manager or a user with Manage Permissions, so the saved
+       preference only applies to those users. Everyone else always sees all
+       three meal rows, on Meal Entry and on Add Meal. */
+    _mealViewAllowed() { return this.userRole === 'admin' || this.canDo('togglePerms'); },
+    _mealViewHide() {
+        if (this._tablePrefs && this._tablePrefsMess === this.messId) return this._tablePrefs.mealRows || {};
+        try { return JSON.parse(localStorage.getItem('meal_view_hide') || '{}'); } catch (e) { return {}; }
+    },
+
     showMealViewPopup() {
-        const saved = JSON.parse(localStorage.getItem('meal_view_hide') || '{}');
+        if (this.userRole !== 'admin' && !this.canDo('togglePerms')) {
+            return this.toast('Only the manager or a user with Manage Permissions can change this.', 'error', 'toast-perm');
+        }
+        const saved = this._mealViewHide();
         const bf = !saved.breakfast;
         const lc = !saved.lunch;
         const dn = !saved.dinner;
+        const sp = !saved.special;
         const body = document.getElementById('modal-body');
         body.innerHTML = `
             <p style="margin:0 0 16px;font-size:14px;color:#777">Select which meal rows to show in the table:</p>
             <div style="display:flex;flex-direction:column;gap:12px">
-                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;border-radius:10px;background:var(--card);border:1px solid var(--border)">
-                    <input type="checkbox" id="view-bf" ${bf?'checked':''} style="width:18px;height:18px;accent-color:#e65100">
+                <label class="mv-opt">
                     <span style="font-size:20px">☕</span>
-                    <span style="flex:1;font-size:15px;font-weight:600">Breakfast</span>
-                    <span style="font-size:13px;color:#e65100">Orange</span>
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-size:15px;font-weight:600">Breakfast</span>
+                        <span style="display:block;font-size:12.5px;color:#777">Orange</span>
+                    </span>
+                    <span class="toggle"><input type="checkbox" id="view-bf" ${bf?'checked':''}><span class="toggle-slider"></span></span>
                 </label>
-                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;border-radius:10px;background:var(--card);border:1px solid var(--border)">
-                    <input type="checkbox" id="view-lc" ${lc?'checked':''} style="width:18px;height:18px;accent-color:#2E7D32">
+                <label class="mv-opt">
                     <span style="font-size:20px">🍔</span>
-                    <span style="flex:1;font-size:15px;font-weight:600">Lunch</span>
-                    <span style="font-size:13px;color:#2E7D32">Green</span>
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-size:15px;font-weight:600">Lunch</span>
+                        <span style="display:block;font-size:12.5px;color:#777">Green</span>
+                    </span>
+                    <span class="toggle"><input type="checkbox" id="view-lc" ${lc?'checked':''}><span class="toggle-slider"></span></span>
                 </label>
-                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;border-radius:10px;background:var(--card);border:1px solid var(--border)">
-                    <input type="checkbox" id="view-dn" ${dn?'checked':''} style="width:18px;height:18px;accent-color:#1565C0">
+                <label class="mv-opt">
                     <span style="font-size:20px">🍽</span>
-                    <span style="flex:1;font-size:15px;font-weight:600">Dinner</span>
-                    <span style="font-size:13px;color:#1565C0">Blue</span>
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-size:15px;font-weight:600">Dinner</span>
+                        <span style="display:block;font-size:12.5px;color:#777">Blue</span>
+                    </span>
+                    <span class="toggle"><input type="checkbox" id="view-dn" ${dn?'checked':''}><span class="toggle-slider"></span></span>
+                </label>
+                <label class="mv-opt">
+                    <span style="font-size:20px">⭐</span>
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-size:15px;font-weight:600">Special</span>
+                        <span style="display:block;font-size:12.5px;color:#777">Purple</span>
+                    </span>
+                    <span class="toggle"><input type="checkbox" id="view-sp" ${sp?'checked':''}><span class="toggle-slider"></span></span>
                 </label>
             </div>`;
         document.getElementById('modal-title').textContent = 'View Settings';
@@ -3309,12 +3754,16 @@ https://u2l.ai/MessManager
             if (!document.getElementById('view-bf').checked) hide.breakfast = true;
             if (!document.getElementById('view-lc').checked) hide.lunch = true;
             if (!document.getElementById('view-dn').checked) hide.dinner = true;
+            if (!document.getElementById('view-sp').checked) hide.special = true;
+            if (!this._mealViewAllowed()) return;
             localStorage.setItem('meal_view_hide', JSON.stringify(hide));
+            this._saveTablePrefs({ mealRows: hide });
             this.loadMeals();
         };
         document.getElementById('view-bf').onchange = apply;
         document.getElementById('view-lc').onchange = apply;
         document.getElementById('view-dn').onchange = apply;
+        document.getElementById('view-sp').onchange = apply;
     },
 
     async loadMealHistory() {
@@ -3896,18 +4345,52 @@ https://u2l.ai/MessManager
     editDepOnDateChange(val) { this._applyHiddenDate('edit-dep-date', 'edit-dep-date-text', val); },
 
     _openHiddenDate(targetId, hidId, onChange) {
-        const old = document.getElementById(hidId);
-        if (old) old.remove();
         const target = document.getElementById(targetId);
-        const input = document.createElement('input');
-        input.type = 'date';
-        input.id = hidId;
-        input.value = (target && target.value) || new Date().toISOString().slice(0, 10);
-        input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0';
-        input.oninput = () => onChange(input.value);
-        document.body.appendChild(input);
-        input.click();
-        setTimeout(() => { try { input.showPicker(); } catch (e) {} }, 100);
+        this._pickAppDate((target && target.value) || '', onChange);
+    },
+
+    /* A hidden date input only pops its picker inside the Android WebView; a
+       desktop browser ignores it, so the web gets a real visible field. */
+    _pickAppDate(currentVal, onChange) {
+        const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+        if (isNative) {
+            const oldInput = document.querySelector('.app-date-native');
+            if (oldInput) oldInput.remove();
+            const input = document.createElement('input');
+            input.type = 'date';
+            input.className = 'app-date-native';
+            input.value = currentVal || new Date().toISOString().slice(0, 10);
+            input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0';
+            input.oninput = () => { onChange(input.value); input.remove(); };
+            document.body.appendChild(input);
+            input.click();
+            setTimeout(() => { try { input.showPicker(); } catch (e) {} }, 100);
+            return;
+        }
+        const oldWrap = document.getElementById('app-date-overlay');
+        if (oldWrap) oldWrap.remove();
+        const start = (currentVal || new Date().toISOString().slice(0, 10)).slice(0, 10);
+        const wrap = document.createElement('div');
+        wrap.id = 'app-date-overlay';
+        wrap.className = 'app-date-overlay';
+        wrap.innerHTML = `<div class="app-date-card">
+                <p class="app-date-title">Select date</p>
+                <input type="date" id="app-date-input" class="app-date-input" value="${start}">
+                <div class="app-date-btns">
+                    <button type="button" class="app-date-btn app-date-cancel">Cancel</button>
+                    <button type="button" class="app-date-btn app-date-ok">Done</button>
+                </div>
+            </div>`;
+        document.body.appendChild(wrap);
+        const input = wrap.querySelector('#app-date-input');
+        const close = () => wrap.remove();
+        const apply = () => { if (input.value) { onChange(input.value); close(); } };
+        wrap.addEventListener('click', ev => {
+            if (ev.target === wrap || ev.target.classList.contains('app-date-cancel')) close();
+        });
+        wrap.querySelector('.app-date-ok').addEventListener('click', apply);
+        input.addEventListener('change', apply);
+        setTimeout(() => { input.focus(); try { input.showPicker(); } catch (e) {} }, 50);
     },
 
     _applyHiddenDate(targetId, textId, val) {
@@ -4276,12 +4759,15 @@ https://u2l.ai/MessManager
                 </select><span class="material-icons-round">expand_more</span></div>
                 <div class="dep-label" style="margin-top:6px">Divided to:</div>
                 <div class="bz-util-members">
-                    <div class="bz-util-selectall" onclick="App.bzToggleAll()">
-                        <input type="checkbox" checked id="bz-selectall-cb" onchange="App.bzToggleAllCb()">
+                    <div class="bz-util-selectall" onclick="App.bzToggleAll(this)">
+                        <input type="checkbox" checked id="bz-selectall-cb" onchange="App.bzToggleAllCb(this)">
                         <span>Select all</span>
                         <span class="bz-util-count" id="bz-util-count">${names.length}/${names.length} selected</span>
+                        <button type="button" class="bz-select-caret" onclick="event.stopPropagation();App.bzToggleList(this)"><span class="material-icons-round">expand_more</span></button>
                     </div>
-                    ${names.map(n => `<label class="bz-util-member"><input type="checkbox" checked data-member="${n}" onchange="App.bzUpdateUtilCount()"><span>${n}</span></label>`).join('')}
+                    <div class="bz-util-members-list" style="display:none">
+                        ${names.map(n => `<label class="bz-util-member"><input type="checkbox" checked data-member="${n}" onchange="App.bzUpdateUtilCount(this)"><span>${n}</span></label>`).join('')}
+                    </div>
                 </div>
             </div>`;
         this.applyLanguage();
@@ -4361,12 +4847,15 @@ https://u2l.ai/MessManager
                 </select><span class="material-icons-round">expand_more</span></div>
                 <div class="dep-label" style="margin-top:6px">Divided to:</div>
                 <div class="bz-util-members">
-                    <div class="bz-util-selectall" onclick="App.bzToggleAll()">
-                        <input type="checkbox" checked id="bz-selectall-cb" onchange="App.bzToggleAllCb()">
+                    <div class="bz-util-selectall" onclick="App.bzToggleAll(this)">
+                        <input type="checkbox" checked id="bz-selectall-cb" onchange="App.bzToggleAllCb(this)">
                         <span>Select all</span>
                         <span class="bz-util-count" id="bz-util-count">${names.length}/${names.length} selected</span>
+                        <button type="button" class="bz-select-caret" onclick="event.stopPropagation();App.bzToggleList(this)"><span class="material-icons-round">expand_more</span></button>
                     </div>
-                    ${names.map(n => `<label class="bz-util-member"><input type="checkbox" checked data-member="${n}" onchange="App.bzUpdateUtilCount()"><span>${n}</span></label>`).join('')}
+                    <div class="bz-util-members-list" style="display:none">
+                        ${names.map(n => `<label class="bz-util-member"><input type="checkbox" checked data-member="${n}" onchange="App.bzUpdateUtilCount(this)"><span>${n}</span></label>`).join('')}
+                    </div>
                 </div>
             </div>`;
         document.getElementById('modal-footer').innerHTML = `
@@ -4594,26 +5083,66 @@ https://u2l.ai/MessManager
         this.toast(msg, res.skipped.length ? 'info' : 'success');
     },
 
-    bzToggleAll() {
-        const all = document.querySelectorAll('#bz-utility-section .bz-util-member input');
-        const allChecked = [...all].every(c => c.checked);
-        all.forEach(c => c.checked = !allChecked);
-        document.getElementById('bz-selectall-cb').checked = !allChecked;
-        this.bzUpdateUtilCount();
+    _bzUtilCard(el) {
+        if (el && el.closest) {
+            const root = el.closest('.bz-util-members');
+            if (root) { this._bzUtilRoot = root; return root; }
+        }
+        if (this._bzUtilRoot && document.body.contains(this._bzUtilRoot)) return this._bzUtilRoot;
+        const found = document.querySelector('#addcost-body .bz-util-members') || document.querySelector('.bz-util-members');
+        this._bzUtilRoot = found;
+        return found;
     },
 
-    bzToggleAllCb() {
-        const checked = document.getElementById('bz-selectall-cb').checked;
-        document.querySelectorAll('#bz-utility-section .bz-util-member input').forEach(c => c.checked = checked);
-        this.bzUpdateUtilCount();
+    bzToggleAll(el) {
+        const root = this._bzUtilCard(el);
+        if (!root) return;
+        const all = [...root.querySelectorAll('.bz-util-member input')];
+        const allChecked = all.length > 0 && all.every(c => c.checked);
+        all.forEach(c => { c.checked = !allChecked; });
+        const sa = root.querySelector('.bz-util-selectall input[type="checkbox"]');
+        if (sa) sa.checked = !allChecked;
+        this.bzUpdateUtilCount(root);
     },
 
-    bzUpdateUtilCount() {
-        const all = document.querySelectorAll('#bz-utility-section .bz-util-member input');
-        const checked = [...all].filter(c => c.checked).length;
-        document.getElementById('bz-util-count').textContent = `${checked}/${all.length} selected`;
-        document.getElementById('bz-selectall-cb').checked = checked === all.length;
-        this._bzUtilSelected = [...all].filter(c => c.checked).map(c => c.dataset.member);
+    bzToggleAllCb(el) {
+        const root = this._bzUtilCard(el);
+        if (!root) return;
+        const checked = !!(el && el.checked);
+        root.querySelectorAll('.bz-util-member input').forEach(c => { c.checked = checked; });
+        this.bzUpdateUtilCount(root);
+    },
+
+    /* All selected collapses the name list; anything less shows every name.
+       The caret flips the list by hand without changing the selection. */
+    bzToggleList(el) {
+        const root = this._bzUtilCard(el);
+        if (!root) return;
+        root.dataset.listOpen = root.dataset.listOpen === '1' ? '0' : '1';
+        this._bzApplyUtilListState(root);
+    },
+
+    _bzApplyUtilListState(root) {
+        if (!root) return;
+        const list = root.querySelector('.bz-util-members-list');
+        const caret = root.querySelector('.bz-select-caret .material-icons-round');
+        const open = root.dataset.listOpen === '1';
+        if (list) list.style.display = open ? '' : 'none';
+        if (caret) caret.textContent = open ? 'expand_less' : 'expand_more';
+    },
+
+    bzUpdateUtilCount(el) {
+        const root = this._bzUtilCard(el);
+        if (!root) return;
+        const all = [...root.querySelectorAll('.bz-util-member input')];
+        const checked = all.filter(c => c.checked).length;
+        const countEl = root.querySelector('.bz-util-count');
+        if (countEl) countEl.textContent = `${checked}/${all.length} selected`;
+        const sa = root.querySelector('.bz-util-selectall input[type="checkbox"]');
+        if (sa) sa.checked = all.length > 0 && checked === all.length;
+        root.dataset.listOpen = (all.length > 0 && checked === all.length) ? '0' : '1';
+        this._bzApplyUtilListState(root);
+        this._bzUtilSelected = all.filter(c => c.checked).map(c => c.dataset.member);
         this.bzRenderFooter();
     },
 
@@ -4680,19 +5209,7 @@ https://u2l.ai/MessManager
         if (el) el.textContent = `${dd.getDate()} ${dd.toLocaleDateString('en-US',{month:'long'})}, ${dd.getFullYear()}`;
     },
 
-    bzPickDate() {
-        const old = document.getElementById('bz-date-hid');
-        if (old) old.remove();
-        const input = document.createElement('input');
-        input.type = 'date';
-        input.id = 'bz-date-hid';
-        input.value = this._bzDate;
-        input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0';
-        input.oninput = () => this.bzOnDateChange(input.value);
-        document.body.appendChild(input);
-        input.click();
-        setTimeout(() => { try { input.showPicker(); } catch(e) {} }, 100);
-    },
+    bzPickDate() { this._pickAppDate(this._bzDate, v => this.bzOnDateChange(v)); },
 
     async loadAddDeposit() {
         if (!this.messId) return;
@@ -4805,19 +5322,7 @@ https://u2l.ai/MessManager
         if (el) el.textContent = `${dd.getDate()} ${dd.toLocaleDateString('en-US',{month:'long'})}, ${dd.getFullYear()}`;
     },
 
-    depPickDate() {
-        const old = document.getElementById('dep-date-hid');
-        if (old) old.remove();
-        const input = document.createElement('input');
-        input.type = 'date';
-        input.id = 'dep-date-hid';
-        input.value = this._depDate;
-        input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0';
-        input.oninput = () => this.depOnDateChange(input.value);
-        document.body.appendChild(input);
-        input.click();
-        setTimeout(() => { try { input.showPicker(); } catch(e) {} }, 100);
-    },
+    depPickDate() { this._pickAppDate(this._depDate, v => this.depOnDateChange(v)); },
 
     async saveDeposit() {
         if (!this.checkPerm('moneyManage')) return;
@@ -6572,7 +7077,7 @@ https://u2l.ai/MessManager
                         <div class="am-stats-row">
                             <div class="am-stat-card"><small>Total meals</small><strong>${totalMeals}</strong></div>
                             <div class="am-stat-card"><small>Meal bazar</small><strong>৳ ${this.fmtNum(totalMealBazar)}</strong><small>${mids.length} Members</small></div>
-                            <div class="am-stat-card"><small>Expense per Meal</small><strong>৳ ${rate.toFixed(2)}</strong><small>Bazar ৳${this.fmtNum(totalMealBazar)}</small><small>÷ Meals ${totalMeals}</small></div>
+                            <div class="am-stat-card"><small>Meal Rate</small><strong>৳ ${rate.toFixed(2)}</strong><small>Bazar ৳${this.fmtNum(totalMealBazar)}</small><small>÷ Meals ${totalMeals}</small></div>
                         </div>
                         ${memberBalances.length ? `<div class="am-card">
                             <h3>Member balances</h3>
@@ -6585,7 +7090,7 @@ https://u2l.ai/MessManager
                             }).join('')}</div>
                         </div>` : ''}
                         <div class="am-card">
-                            <h3>Expense per Meal trend</h3>
+                            <h3>Meal Rate trend</h3>
                             <p class="am-sub">${rateDiff >= 0 ? '▲' : '▼'} ${Math.abs(rateDiff)}% vs last month · ${rateDiff >= 0 ? 'costlier' : 'cheaper'}</p>
                             <div class="am-chart-scroll"><canvas id="am-rate-chart"></canvas></div>
                         </div>
