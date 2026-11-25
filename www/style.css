@@ -4298,7 +4298,7 @@ img, canvas { max-width: 100%; }
     .dash-info-box .material-icons-round, .quick-btn .material-icons-round,
     .flat-mess-icon .material-icons-round, .flat-rate-badge .material-icons-round,
     .flat-info-box .material-icons-round, .flat-total strong, .flat-tab.active,
-    .adash-custom, .adash-fin-label, .adash-fin-head,
+    .adash-fin-label, .adash-fin-head,
     .nav-item.active, .pull-refresh-indicator .pull-refresh-icon,
     .abazar-day-edit, .abazar-util-subtotal span:last-child,
     .aduty-banner .material-icons-round, .am-head .icon-btn,
@@ -4311,13 +4311,17 @@ img, canvas { max-width: 100%; }
     .dash-info-box .material-icons-round, .quick-btn .material-icons-round,
     .flat-mess-icon .material-icons-round, .flat-rate-badge .material-icons-round,
     .flat-info-box .material-icons-round, .flat-total strong, .flat-tab.active,
-    .adash-custom, .adash-fin-label, .adash-fin-head,
+    .adash-fin-label, .adash-fin-head,
     .nav-item.active, .pull-refresh-indicator .pull-refresh-icon,
     .abazar-day-edit, .abazar-util-subtotal span:last-child,
     .aduty-banner .material-icons-round, .am-head .icon-btn,
     .auth-logo .material-icons-round, .ed-hero-top b) {
     color: var(--primary-ink);
 }
+/* "Customise table" is a quiet utility beside the section heading, not a call
+   to action — blue ink shouted louder than the heading it sits next to. */
+[data-theme="dark"] .adash-custom,
+[data-theme="oled"] .adash-custom { color: #9aa4b5; }
 /* Round icon buttons sat as a #0a0a0a circle on a #0d0d0d card — no edge. */
 [data-theme="dark"] .aflat-icon-btn, [data-theme="oled"] .aflat-icon-btn {
     background: #202020; border-color: #565656;
