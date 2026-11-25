@@ -2,6 +2,7 @@
     --sat: 0px;
     --sab: 0px;
     --primary: #0b3d91;
+    --primary-ink: #0b3d91;
     --primary-dark: #08306b;
     --primary-light: #c8ddf0;
     --accent: #f5a623;
@@ -4251,3 +4252,140 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .app-date-title { color: #fff; }
 [data-theme="oled"] .app-date-input { background: #111; border-color: #2c2c2c; color: #fff; }
 [data-theme="oled"] .app-date-cancel { background: #2a2a2a; color: #ddd; }
+
+/* ==================== OLED: readable controls ====================
+   OLED paints the page #0a0a0a and cards #0d0d0d, but buttons, tabs and
+   filter pills were drawn on #0d0d0d/#141414 with a #1a1a1a-#222 edge — a
+   couple of percent of luminance, so they read as faint smudges (Expense
+   List filters and the date/list toggle worst of all). Give every control
+   one clearly visible surface and edge while the theme stays black. The
+   selected states keep their light pill and still win on specificity. */
+[data-theme="oled"] :is(.abazar-filter-btn, .abazar-view-btn,
+    .bz-tab, .aam-tab, .bz-chip, .dep-chip, .dep-date, .bz-add-more) {
+    background: #202020;
+    border-color: #565656;
+    color: #e8ebf1;
+}
+[data-theme="oled"] :is(.abazar-filter-btn, .abazar-view-btn) > .material-icons-round { color: #d9d9d9; }
+[data-theme="oled"] .abazar-filter-btn:not(.active):hover,
+[data-theme="oled"] .abazar-view-btn:not(.active):hover { background: #2a2a2a; }
+/* Filter / sort popups float over the black page, so they need the same lift. */
+[data-theme="oled"] .abazar-member-dropdown { background: #171717; border-color: #4a4a4a; }
+[data-theme="oled"] .abazar-member-dropdown-item {
+    background: #202020; border-color: #4a4a4a; color: #e8ebf1;
+}
+[data-theme="oled"] .abazar-member-dropdown-item:hover { background: #2a2a2a; }
+[data-theme="oled"] .abazar-member-dropdown-item.active {
+    background: #2c4674; border-color: #4d6da6; color: #ffffff;
+}
+
+/* ==================== DARK + OLED: readable accent ink ====================
+   --primary (#0b3d91) is the brand navy. As a fill it is right, but as text
+   or icon ink on a near-black page it lands around 1.9:1, so the edit, share,
+   remove, link, tab and refresh controls on Dashboard, Members, Money and the
+   auth screens were effectively invisible in both dark themes. Paint that ink
+   with a lighter tint of the same blue (brighter red for destructive text);
+   fills keep the original brand navy. */
+[data-theme="dark"], [data-theme="oled"] {
+    --primary-ink: #7cb2f7;
+    --danger-ink: #ff8080;
+}
+[data-theme="dark"] :is(.btn-link-blue, .btn-link-inline, .btn-text,
+    .aflat-share-inline, .aflat-share-inline .material-icons-round,
+    .aflat-icon-btn, .aflat-badge .material-icons-round,
+    .aflat-card-box-head .material-icons-round, .aflat-home-icon .material-icons-round,
+    .adash-edit .material-icons-round, .adash-mess-box-top .material-icons-round,
+    .dash-info-box .material-icons-round, .quick-btn .material-icons-round,
+    .flat-mess-icon .material-icons-round, .flat-rate-badge .material-icons-round,
+    .flat-info-box .material-icons-round, .flat-total strong, .flat-tab.active,
+    .adash-custom, .adash-fin-label, .adash-fin-head,
+    .nav-item.active, .pull-refresh-indicator .pull-refresh-icon,
+    .abazar-day-edit, .abazar-util-subtotal span:last-child,
+    .aduty-banner .material-icons-round, .am-head .icon-btn,
+    .auth-logo .material-icons-round, .ed-hero-top b),
+[data-theme="oled"] :is(.btn-link-blue, .btn-link-inline, .btn-text,
+    .aflat-share-inline, .aflat-share-inline .material-icons-round,
+    .aflat-icon-btn, .aflat-badge .material-icons-round,
+    .aflat-card-box-head .material-icons-round, .aflat-home-icon .material-icons-round,
+    .adash-edit .material-icons-round, .adash-mess-box-top .material-icons-round,
+    .dash-info-box .material-icons-round, .quick-btn .material-icons-round,
+    .flat-mess-icon .material-icons-round, .flat-rate-badge .material-icons-round,
+    .flat-info-box .material-icons-round, .flat-total strong, .flat-tab.active,
+    .adash-custom, .adash-fin-label, .adash-fin-head,
+    .nav-item.active, .pull-refresh-indicator .pull-refresh-icon,
+    .abazar-day-edit, .abazar-util-subtotal span:last-child,
+    .aduty-banner .material-icons-round, .am-head .icon-btn,
+    .auth-logo .material-icons-round, .ed-hero-top b) {
+    color: var(--primary-ink);
+}
+/* Round icon buttons sat as a #0a0a0a circle on a #0d0d0d card — no edge. */
+[data-theme="dark"] .aflat-icon-btn, [data-theme="oled"] .aflat-icon-btn {
+    background: #202020; border-color: #565656;
+}
+/* Destructive and dismissive controls keep their meaning, at readable strength. */
+[data-theme="dark"] .aflat-leave, [data-theme="oled"] .aflat-leave { color: var(--danger-ink); }
+[data-theme="dark"] .aflat-remove, [data-theme="oled"] .aflat-remove { color: #9aa4b5; }
+/* Share icon was hard-coded #333, i.e. black on black. */
+[data-theme="dark"] .adash-share .material-icons-round,
+[data-theme="oled"] .adash-share .material-icons-round { color: #e8ebf1; }
+[data-theme="dark"] .adash-share { color: #e8ebf1; }
+
+/* ==================== DARK: surfaces that stayed light ====================
+   A handful of cards kept their light background in the dark theme while the
+   text inside them followed the theme — Members rows, the permission cards,
+   the Notices board and the whole Bazar Note page were near-white on white.
+   Mirror the OLED values so both dark themes read the same. */
+[data-theme="dark"] :is(.aflat-member-item, .aflat-people-item, .aflat-perm-card, .abn-bottom) {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--text);
+}
+[data-theme="dark"] .anotice-board { background: var(--bg); }
+[data-theme="dark"] #page-bazarnote { background: var(--bg); }
+[data-theme="dark"] .abn-info-card {
+    background: var(--card); border-color: var(--border); color: var(--text);
+}
+/* The section heading icons and the "Customise table" icon were hard-coded
+   #222, so they vanished on the dark dashboard. */
+[data-theme="dark"] .adash-stats-head .material-icons-round { color: #999; }
+[data-theme="dark"] .adash-stats-head strong { color: var(--text); }
+/* The Edit pill on an amber row: #ccc on #FFC107 was 1.0:1. */
+[data-theme="dark"] .abazar-btn-edit,
+[data-theme="oled"] .abazar-btn-edit { background: #FFC107; color: #333; }
+/* Selected option in the filter / sort popup. */
+[data-theme="dark"] .abazar-member-dropdown-item.active {
+    background: #2c4674; border-color: #4d6da6; color: #ffffff;
+}
+/* Expense rows kept their light surfaces in the dark theme. */
+[data-theme="dark"] .abazar-item-row { border-color: var(--border); }
+[data-theme="dark"] .abazar-item-row:hover { background: #181818; }
+[data-theme="dark"] .abazar-item-row.expanded,
+[data-theme="dark"] .abazar-day-head.expanded { background: #141414; }
+
+/* ==================== DARK + OLED: fields you can see ====================
+   Text fields sat at #141414 with a #222 edge inside #0d0d0d cards, and the
+   Members "Add Member" box was #0d0d0d on #0d0d0d with a transparent inner
+   input — only the placeholder floated on black, so the box looked missing.
+   Give every field one visible frame. */
+[data-theme="oled"] input, [data-theme="oled"] select, [data-theme="oled"] textarea {
+    background: #1c1c1c !important;
+    border-color: #4a4a4a !important;
+    color: #e8ebf1 !important;
+}
+[data-theme="dark"] .aflat-input-wrap,
+[data-theme="oled"] .aflat-input-wrap {
+    background: #202020;
+    border: 1.5px solid #565656;
+}
+[data-theme="oled"] .aflat-input-wrap input {
+    background: #202020 !important;
+    border-color: transparent !important;
+    color: #e8ebf1 !important;
+}
+[data-theme="dark"] .aflat-input-wrap input,
+[data-theme="oled"] .aflat-input-wrap input { color: #e8ebf1; }
+/* Every field's placeholder reads the same. The per-field overrides left the
+   Add Member box bright (#b9c2d0) while Meal / Cost / Deposit sat on #666,
+   barely above the field itself — one colour for all of them now. */
+[data-theme="dark"] ::placeholder,
+[data-theme="oled"] ::placeholder { color: #a8b2c4 !important; opacity: 1; }
