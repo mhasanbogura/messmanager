@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.53 (build 892)',
+        prof_version:'Version 1.6.54 (build 895)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.53 (বিল্ড 892)',
+            prof_version:'ভার্সন 1.6.54 (বিল্ড 895)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -2327,10 +2327,10 @@ const App = {
                         : (!!userPerms[k] || (k === 'mealEntry' && !!userPerms['mealEdit']) || (k === 'togglePerms' && !!userPerms['elecManage']));
                     const canClick = iCanToggle && !isAdmin && !isMe;
                     checks += `<div class="aflat-perm-row">
-                        <div class="aflat-perm-check ${checked ? 'checked' : ''}" onclick="App.togglePerm('${id}','${k}',this)" ${!canClick ? 'style="pointer-events:none;opacity:.5"' : ''}>
-                            <span class="material-icons-round">check</span>
-                        </div>
                         <span class="aflat-perm-label">${permLabels[j]}</span>
+                        <div class="aflat-perm-switch ${checked ? 'checked' : ''}" role="switch" aria-checked="${checked ? 'true' : 'false'}" aria-label="${permLabels[j]}" tabindex="0" onclick="App.togglePerm('${id}','${k}',this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.togglePerm('${id}','${k}',this);}" ${!canClick ? 'style="pointer-events:none;opacity:.5"' : ''}>
+                            <span class="aflat-perm-knob"></span>
+                        </div>
                     </div>`;
                 }
                 html += `<div class="aflat-perm-card">
@@ -2351,6 +2351,7 @@ const App = {
         if (uid === this.myKey() || uid === this.currentUser.uid) { this.toast("Can't change own permissions", 'error'); return; }
         try {
             const isChecked = el.classList.toggle('checked');
+            el.setAttribute('aria-checked', isChecked ? 'true' : 'false');
             const updates = {};
             updates[`messes/${this.messId}/permissions/${uid}/${key}`] = isChecked;
             // 'Manage Meals' is one row backed by two stored keys (mealEntry + mealEdit).

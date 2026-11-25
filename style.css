@@ -2934,17 +2934,40 @@ img, canvas { max-width: 100%; }
 }
 .aflat-perm-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
 .aflat-perm-name .role-badge { color: #d32f2f; font-weight: 500; font-size: 13px; }
-.aflat-perm-list { display: flex; flex-direction: column; gap: 8px; }
-.aflat-perm-row { display: flex; align-items: center; gap: 10px; }
-.aflat-perm-check {
-    width: 24px; height: 24px; border-radius: 6px; border: 2px solid #bbb;
-    background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all .2s;
+.aflat-perm-list { display: flex; flex-direction: column; gap: 0; }
+/* Every permission row is divided by the same line that separates the user
+   header from the list. */
+.aflat-perm-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 9px 0;
 }
-.aflat-perm-check.checked { background: #d32f2f; border-color: #d32f2f; }
-.aflat-perm-check .material-icons-round { font-size: 18px; color: #fff; display: none; }
-.aflat-perm-check.checked .material-icons-round { display: block; }
-.aflat-perm-check[style*="pointer-events:none"] { opacity: 1 !important; }
+.aflat-perm-row + .aflat-perm-row { border-top: 1px solid #eef1f6; }
+.aflat-perm-row:first-child { padding-top: 0; }
+.aflat-perm-row:last-child { padding-bottom: 0; }
+[data-theme="dark"] .aflat-perm-top,
+[data-theme="oled"] .aflat-perm-top,
+[data-theme="dark"] .aflat-perm-row + .aflat-perm-row,
+[data-theme="oled"] .aflat-perm-row + .aflat-perm-row { border-color: #2a2f36; }
+/* Permission rows use a switch, like the Settings toggles, instead of a box. */
+.aflat-perm-switch {
+    position: relative; width: 44px; height: 26px; border-radius: 999px;
+    background: #ccd3dd; cursor: pointer; flex-shrink: 0;
+    transition: background .2s;
+}
+.aflat-perm-switch:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.aflat-perm-knob {
+    position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    transition: transform .2s; pointer-events: none;
+}
+.aflat-perm-switch.checked { background: var(--primary); }
+.aflat-perm-switch.checked .aflat-perm-knob { transform: translateX(18px); }
+[data-theme="dark"] .aflat-perm-switch,
+[data-theme="oled"] .aflat-perm-switch { background: #3d434c; }
+[data-theme="dark"] .aflat-perm-switch.checked,
+[data-theme="oled"] .aflat-perm-switch.checked { background: #3b7bdd; }
+/* Rows you cannot change (the manager or your own) stay dimmed so the lock reads. */
+.aflat-perm-switch[style*="pointer-events:none"] { opacity: .4 !important; cursor: not-allowed; }
 .aflat-perm-label { font-size: 13px; color: #333; }
 .aflat-perm-sep { height: 1px; background: #eef1f6; margin: 8px 0; }
 .aflat-perm-note { font-size: 12px; color: #999; display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; }
@@ -4227,6 +4250,20 @@ img, canvas { max-width: 100%; }
 #dash-util-table.msum-bold tbody td strong { font-weight: 800; }
 #dash-util-table.msum-bold tbody tr.adash-total td strong { font-weight: 800; }
 #dash-util-table tbody tr:last-child td { border-bottom: none; }
+
+/* The header row and the Total row are always bold in both tables; the
+   "Bold every figure" option only decides the member rows. The Total label
+   was inheriting the normal 400 name style, so only the figures looked bold. */
+.msum-table thead th,
+#dash-util-table thead th { font-weight: 800; }
+.msum-table thead th small,
+#dash-util-table thead th small { font-weight: 700; }
+.msum-table tbody tr.adash-total td,
+.msum-table tbody tr.adash-total td strong,
+.msum-table tbody tr.adash-total td small,
+#dash-util-table tbody tr.adash-total td,
+#dash-util-table tbody tr.adash-total td.c-name,
+#dash-util-table tbody tr.adash-total td strong { font-weight: 800; }
 
 /* ==================== WEB DATE PICKER ==================== */
 .app-date-overlay {
