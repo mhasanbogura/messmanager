@@ -1880,6 +1880,24 @@ select.input-sm { cursor: pointer; }
     .adash-table td.c-name { font-size: 12px; padding-left: 6px; }
     .adash-table td small { font-size: 8px; }
     .adash-table td strong { font-size: 12px; }
+    /* Meal Summary must fit a phone: the long "Meal+Special" / "Bazar+Money"
+       captions made the table wider than the card and pushed Balance off
+       screen. Fixed column shares keep all five columns inside the card and
+       the two captions use a smaller size so they stay on one line. */
+    .adash-table.msum-table { table-layout: fixed; }
+    .adash-table.msum-table thead th { width: 18%; }
+    .adash-table.msum-table thead th:nth-child(1) { width: 26%; }
+    .adash-table.msum-table thead th:nth-child(2) { width: 18%; }
+    .adash-table.msum-table thead th:nth-child(3) { width: 19%; }
+    .adash-table.msum-table thead th:nth-child(4) { width: 19%; }
+    .adash-table.msum-table thead th,
+    .adash-table.msum-table tbody td { padding-left: 2px; padding-right: 2px; }
+    .adash-table.msum-table tbody td.c-name { padding-left: 5px; }
+    .adash-table.msum-table thead th small { font-size: 7px; letter-spacing: 0; }
+    .adash-table.msum-table tbody td,
+    .adash-table.msum-table tbody td.c-name,
+    .adash-table.msum-table tbody td strong { font-size: 12px; }
+    .adash-table.msum-table .msum-bd { font-size: 9px; }
     .adash-table-wrap { margin: 0 10px; border-radius: 12px; }
 }
 
@@ -4144,7 +4162,7 @@ img, canvas { max-width: 100%; }
 }
 /* ==================== MEAL SUMMARY : MEMBER STATS TABLE ==================== */
 .msum-table thead th small {
-    display: block; font-size: 10px; font-weight: 500; opacity: .8;
+    display: block; font-size: 9px; font-weight: 500; opacity: .8;
     font-family: 'Inter', sans-serif; letter-spacing: .1px; margin-bottom: 1px;
 }
 /* Show Grid Lines: both vertical and horizontal lines, or none at all. */
@@ -4154,23 +4172,38 @@ img, canvas { max-width: 100%; }
 .msum-table:not(.msum-grid) tbody tr.adash-total td { border-top: none; border-bottom: none; }
 [data-theme="dark"] .msum-grid tbody td, [data-theme="oled"] .msum-grid tbody td { border-bottom-color: rgba(255,255,255,.14); }
 [data-theme="dark"] .msum-grid tbody td + td, [data-theme="oled"] .msum-grid tbody td + td { border-left-color: rgba(255,255,255,.14); }
+/* Show Grid Lines covers the header row too, so the columns read as one grid.
+   The header is dark in the light and dark themes and light in OLED, so each
+   theme needs its own divider colour. */
+.msum-grid thead th { border-bottom: 1px solid rgba(255,255,255,.3); }
+.msum-grid thead th + th { border-left: 1px solid rgba(255,255,255,.3); }
+[data-theme="oled"] .msum-grid thead th { border-bottom-color: rgba(0,0,0,.25); }
+[data-theme="oled"] .msum-grid thead th + th { border-left-color: rgba(0,0,0,.25); }
 .msum-table.msum-bold tbody td strong { font-weight: 800; }
 .msum-table tbody td {
-    font-size: 15px; padding: 8px 4px; vertical-align: middle;
+    font-size: 14px; padding: 8px 4px; vertical-align: middle;
 }
-.msum-table tbody td.c-name { font-weight: 400; font-size: 15px; text-align: left; padding-left: 12px; }
-.msum-table tbody td strong { font-weight: 400; font-size: 15px; }
+.msum-table tbody td.c-name { font-weight: 400; font-size: 14px; text-align: left; padding-left: 12px; }
+.msum-table tbody td strong { font-weight: 400; font-size: 14px; }
 /* Header and Total row are always bold; other figures follow "Bold every figure". */
 .msum-table tbody tr.adash-total td,
 .msum-table tbody tr.adash-total td strong { font-weight: 700; }
 .msum-table.msum-bold tbody tr.adash-total td,
 .msum-table.msum-bold tbody tr.adash-total td strong { font-weight: 800; }
 .msum-table .msum-bd {
-    display: none; font-size: 11px; font-weight: 400; letter-spacing: .2px;
+    display: none; font-size: 10px; font-weight: 400; letter-spacing: .2px;
     color: var(--text-secondary); margin-bottom: 1px;
 }
 .msum-bd-on .msum-bd { display: block; }
+/* Header labels follow the cost breakdown:
+   ON  → catch caption over the important word:  Meal+Special / Total
+   OFF → the plain column word only:            Meal / Cost (৳) / Deposit (৳)
+   "Total" alone says nothing about which total, so the plain state names
+   the meal column "Meal" instead. */
+.msum-h-meal { display: none; }
 .msum-table:not(.msum-bd-on) thead th small { display: none; }
+.msum-table:not(.msum-bd-on) thead th .msum-h-total { display: none; }
+.msum-table:not(.msum-bd-on) thead th .msum-h-meal { display: inline; }
 .msum-table tbody td.msum-bal.neg strong { color: #c62828; }
 .msum-table tbody td.msum-bal.pos strong { color: #2e7d32; }
 [data-theme="dark"] .msum-table tbody td.msum-bal.neg strong, [data-theme="oled"] .msum-table tbody td.msum-bal.neg strong { color: #ff9a94; }

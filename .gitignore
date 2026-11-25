@@ -14,3 +14,4 @@ icon-test.html
 members-screenshot*.png
 android/app/src/main/assets/public/
 android/app/src/main/assets/fonts/
+.tmp/

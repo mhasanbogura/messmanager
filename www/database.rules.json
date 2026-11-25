@@ -60,6 +60,9 @@
             "monthly": {
               ".write": "auth != null && (root.child('messes').child($mid).child('members').child(auth.token.email.toLowerCase().replace('.', '%2E')).exists() || root.child('messes').child($mid).child('members').child(auth.uid).exists())"
             }
+          },
+          "tablePrefs": {
+            ".write": "auth != null && (root.child('messes').child($mid).child('members').child(auth.token.email.toLowerCase().replace('.', '%2E')).child('role').val() == 'admin' || root.child('messes').child($mid).child('members').child(auth.uid).child('role').val() == 'admin' || root.child('messes').child($mid).child('permissions').child(auth.token.email.toLowerCase().replace('.', '%2E')).child('togglePerms').val() === true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('togglePerms').val() === true || root.child('messes').child($mid).child('permissions').child(auth.token.email.toLowerCase().replace('.', '%2E')).child('elecManage').val() === true || root.child('messes').child($mid).child('permissions').child(auth.uid).child('elecManage').val() === true)"
           }
         },
         "permissions": {
