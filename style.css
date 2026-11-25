@@ -1819,7 +1819,7 @@ select.input-sm { cursor: pointer; }
 .adash-stats-head { display: flex; align-items: center; gap: 6px; padding: 4px 12px 8px; }
 .adash-stats-head .material-icons-round { font-size: 20px; color: #222; }
 .adash-stats-head strong { font-size: 16px; font-weight: 600; color: #222; flex: 1; }
-.adash-custom { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #222; cursor: pointer; font-family: 'Inter', sans-serif; }
+.adash-custom { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-secondary); cursor: pointer; font-family: 'Inter', sans-serif; }
 .adash-custom .material-icons-round { font-size: 18px; }
 .adash-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 12px; border-radius: 14px; }
 .adash-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
@@ -4181,6 +4181,11 @@ img, canvas { max-width: 100%; }
 [data-theme="oled"] .msum-grid thead th { border-bottom-color: rgba(0,0,0,.25); }
 [data-theme="oled"] .msum-grid thead th + th { border-left-color: rgba(0,0,0,.25); }
 .msum-table.msum-bold tbody td strong { font-weight: 800; }
+/* The small "1+1" captions are figures too, and the member names belong to
+   the same switch, so one toggle carries the whole row. */
+.msum-table.msum-bold tbody td .msum-bd { font-weight: 700; }
+.msum-table.msum-bold tbody td.c-name { font-weight: 700; }
+#dash-util-table.msum-bold tbody td.c-name { font-weight: 700; }
 .msum-table tbody td {
     font-size: 14px; padding: 8px 4px; vertical-align: middle;
 }
@@ -4319,9 +4324,10 @@ img, canvas { max-width: 100%; }
     color: var(--primary-ink);
 }
 /* "Customise table" is a quiet utility beside the section heading, not a call
-   to action — blue ink shouted louder than the heading it sits next to. */
-[data-theme="dark"] .adash-custom,
-[data-theme="oled"] .adash-custom { color: #9aa4b5; }
+   to action — blue ink in the dark themes and #222 in the light one shouted
+   louder than the heading it sits next to. Secondary ink in every theme. */
+[data-theme] .adash-custom,
+[data-theme] .adash-custom .material-icons-round { color: var(--text-secondary); }
 /* Round icon buttons sat as a #0a0a0a circle on a #0d0d0d card — no edge. */
 [data-theme="dark"] .aflat-icon-btn, [data-theme="oled"] .aflat-icon-btn {
     background: #202020; border-color: #565656;
