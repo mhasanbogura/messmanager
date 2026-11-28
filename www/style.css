@@ -1,4 +1,9 @@
 :root {
+    /* Content column: the page, top bar, bottom nav and floating actions all
+       share it. Wide screens widen the column instead of keeping a narrow
+       centred strip (see --col overrides at the end of this file). */
+    --col: 700px;
+    --col-half: 326px;
     --sat: 0px;
     --sab: 0px;
     --primary: #0b3d91;
@@ -945,7 +950,7 @@ select.input-sm { cursor: pointer; }
     align-items: stretch;
 }
 @media (min-width: 768px) {
-    #toast-container { left: calc(50% - 326px); right: calc(50% - 326px); }
+    #toast-container { left: calc(50% - var(--col-half)); right: calc(50% - var(--col-half)); }
 }
 
 .toast {
@@ -1573,11 +1578,11 @@ select.input-sm { cursor: pointer; }
 }
 
 @media (min-width: 768px) {
-    .topbar { left: auto; transform: none; width: 100%; max-width: 700px; margin: 10px auto 0; }
-    .main-content { padding: 0 24px 24px; max-width: 700px; margin: 0 auto; }
+    .topbar { left: auto; transform: none; width: 100%; max-width: var(--col); margin: 10px auto 0; }
+    .main-content { padding: 0 24px 24px; max-width: var(--col); margin: 0 auto; }
     #app-screen.on-dashboard .main-content { margin-top: 0; }
     #app-screen.on-members .main-content { margin-top: 0; }
-    #app-screen.on-meals .topbar { left: auto; transform: none; width: 100%; max-width: 700px; margin: 10px auto 0; }
+    #app-screen.on-meals .topbar { left: auto; transform: none; width: 100%; max-width: var(--col); margin: 10px auto 0; }
     #app-screen.on-meals .main-content { margin-top: 0; }
     .ameal-grid-scroll { overflow-x: visible; }
     .ameal-table { width: 100%; }
@@ -1585,7 +1590,7 @@ select.input-sm { cursor: pointer; }
     .aprof-card { margin: 0 0 4px; }
     .amealhist-card { margin: 8px 0; }
     .bottom-nav { left: 0; right: 0; bottom: 0; border-radius: 0; border: none; }
-    .bottom-nav-items { flex: none; width: 100%; max-width: 700px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
+    .bottom-nav-items { flex: none; width: 100%; max-width: var(--col); margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
 }
 
 @media (max-width: 360px) {
@@ -2455,10 +2460,10 @@ select.input-sm { cursor: pointer; }
 /* Wide screens: keep floating buttons inside the 652px card column.
    Scoped to #app-screen so these beat the base rules regardless of order. */
 @media (min-width: 768px) {
-    #app-screen .abazar-fab { left: calc(50% - 326px); right: calc(50% - 326px); border-radius: 14px; justify-content: center; padding: 14px; }
-    #app-screen .aam-footer { left: calc(50% - 326px); right: calc(50% - 326px); background: transparent; padding: 6px 0; }
-    #app-screen .anotice-fab { left: calc(50% - 326px); right: calc(50% - 326px); border-radius: 14px; justify-content: center; padding: 14px; }
-    #app-screen .abn-bottom { left: calc(50% - 326px); right: calc(50% - 326px); bottom: 12px; border-radius: 16px; border: 1px solid var(--border); }
+    #app-screen .abazar-fab { left: calc(50% - var(--col-half)); right: calc(50% - var(--col-half)); border-radius: 14px; justify-content: center; padding: 14px; }
+    #app-screen .aam-footer { left: calc(50% - var(--col-half)); right: calc(50% - var(--col-half)); background: transparent; padding: 6px 0; }
+    #app-screen .anotice-fab { left: calc(50% - var(--col-half)); right: calc(50% - var(--col-half)); border-radius: 14px; justify-content: center; padding: 14px; }
+    #app-screen .abn-bottom { left: calc(50% - var(--col-half)); right: calc(50% - var(--col-half)); bottom: 12px; border-radius: 16px; border: 1px solid var(--border); }
     #app-screen .aam-body { padding-left: 0; padding-right: 0; }
     #app-screen .abn-body { padding-left: 24px; padding-right: 24px; }
 }
@@ -3801,7 +3806,7 @@ img, canvas { max-width: 100%; }
     .abazar-fab { left: auto; right: 16px; padding: 12px 20px; border-radius: 999px; justify-content: flex-start; }
 }
 @media (min-width: 768px) {
-    #app-screen .abazar-fab { left: auto; right: calc(50% - 326px + 16px); padding: 12px 22px; border-radius: 999px; justify-content: flex-start; }
+    #app-screen .abazar-fab { left: auto; right: calc(50% - var(--col-half) + 16px); padding: 12px 22px; border-radius: 999px; justify-content: flex-start; }
 }
 
 /* Same floating pill for the Notice "Pin a notice" add button. */
@@ -3830,7 +3835,7 @@ img, canvas { max-width: 100%; }
     .anotice-fab { padding: 12px 18px; font-size: 14px; }
 }
 @media (min-width: 768px) {
-    #app-screen .anotice-fab { left: auto; right: calc(50% - 326px + 16px); border-radius: 999px; padding: 12px 22px; justify-content: flex-start; }
+    #app-screen .anotice-fab { left: auto; right: calc(50% - var(--col-half) + 16px); border-radius: 999px; padding: 12px 22px; justify-content: flex-start; }
 }
 
 /* Add Expense / Meal / Deposit pages: same floating pill for the Add/Save submit. */
@@ -3856,7 +3861,7 @@ img, canvas { max-width: 100%; }
     #app-screen .aam-footer { left: 0; right: 0; padding: 0 16px; background: transparent; }
 }
 @media (min-width: 768px) {
-    #app-screen .aam-footer { left: calc(50% - 326px); right: calc(50% - 326px); padding: 0 16px; background: transparent; }
+    #app-screen .aam-footer { left: calc(50% - var(--col-half)); right: calc(50% - var(--col-half)); padding: 0 16px; background: transparent; }
 }
 
 /* Add pill on Add Meal / Expense / Deposit / Bazar: a size up and lifted a
@@ -4460,4 +4465,15 @@ img, canvas { max-width: 100%; }
 [data-theme="dark"] .bottom-nav-item.active:active,
 [data-theme="oled"] .bottom-nav-item.active:active {
     background: rgba(124, 178, 247, .2);
+}
+
+/* ==================== WIDE SCREENS (tablet / landscape / desktop) ====================
+   Same behaviour as the App Store builds: the layout widens with the window
+   instead of staying a narrow centred strip. The page column, top bar, bottom
+   nav and every floating action share --col, so they all grow together. */
+@media (min-width: 900px) {
+    :root { --col: 1080px; --col-half: 516px; }
+}
+@media (min-width: 1400px) {
+    :root { --col: 1360px; --col-half: 656px; }
 }
