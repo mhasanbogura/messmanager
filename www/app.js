@@ -204,7 +204,7 @@ const App = {
         prof_account:'ACCOUNT',prof_leave_mess:'Leave Mess',prof_logout:'Sign out',prof_reset_pwd:'Reset password',prof_delete:'Delete account',
         prof_more:'MORE',prof_share_app:'Share App',prof_get_app:'Get Android App',prof_about:'About App',prof_contact:'Contact Developer',
         prof_elec_card:'Electricity Card',prof_manage_elec:'Add DESCO/NESCO Account',
-        prof_version:'Version 1.6.54 (build 895)',
+        prof_version:'Version 1.6.55 (build 898)',
         prof_update:'Update App',prof_download:'Download App',
         // Duty editor
         de_assign_dates:'Assign dates',de_yours:'yours',de_taken:'taken (tap to take over)',de_done:'Done',
@@ -380,7 +380,7 @@ const App = {
             prof_account:'অ্যাকাউন্ট',prof_leave_mess:'মেস ছাড়ুন',prof_logout:'সাইন আউট',prof_reset_pwd:'পাসওয়ার্ড রিসেট',prof_delete:'অ্যাকাউন্ট মুছুন',
             prof_more:'আরও',prof_share_app:'অ্যাপ শেয়ার',prof_get_app:'অ্যান্ড্রয়েড অ্যাপ নিন',prof_about:'অ্যাপ সম্পর্কে',prof_contact:'ডেভেলপারের সাথে যোগাযোগ',
             prof_elec_card:'বিদ্যুৎ কার্ড',prof_manage_elec:'DESCO/NESCO অ্যাকাউন্ট যোগ করুন',
-            prof_version:'ভার্সন 1.6.54 (বিল্ড 895)',
+            prof_version:'ভার্সন 1.6.55 (বিল্ড 898)',
             prof_update:'অ্যাপ আপডেট',prof_download:'ডাউনলোড অ্যাপ',
             // Duty editor
             de_assign_dates:'তারিখ নির্ধারণ',de_yours:'আপনার',de_taken:'নেওয়া হয়েছে (ক্লিক করে নিন)',de_done:'সম্পন্ন',
@@ -511,6 +511,7 @@ const App = {
             } else {
                 this.currentUser = null;
                 this.messId = null;
+                this._stopMessLive();
                 this.showScreen('auth-screen');
                 this._hideSplash();
             }
@@ -717,6 +718,7 @@ const App = {
                 window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
                     if (state.isActive && this.currentUser && this.messId) {
                         this.showApp();
+                        this._watchMessLive();
                         this.loadDashboard();
                         this._cacheDriveFiles();
                         this._applySafeInsets(10);
@@ -1313,6 +1315,7 @@ const App = {
         if (!this._validMid(mid)) {
             try { localStorage.removeItem('current_mess_id'); } catch (e) {}
             this.messId = null;
+            this._stopMessLive();
             this.toast('Invalid mess. Please create or join a mess.', 'error');
             return this.loadMyMesses();
         }
@@ -1332,6 +1335,7 @@ const App = {
                         this._userMessesCacheUpdate(mid, null);
                         this.toast('You are no longer a member of this mess', 'error');
                         this.messId = null;
+                        this._stopMessLive();
                         return this.loadMyMesses();
                     }
                     roleFromRow = self.row.role || 'member';
@@ -1398,6 +1402,7 @@ const App = {
         try { this.setupPresence(); } catch (e) {}
         try { await this.loadMyPerms(); } catch (e) {}
         this.showApp();
+        this._watchMessLive();
         if (!offline) this._proactiveCache(mid);
     },
 
@@ -1694,7 +1699,7 @@ const App = {
         if (page === 'duty') this.loadDuty();
         if (page === 'members') { this.loadFlat(); this._setupFlatTabSwipe(); }
         if (page === 'meals') this.loadMeals();
-        if (page === 'addmeal') this.loadAddMeal();
+        if (page === 'addmeal') { this.aamTab = 'meal'; this.loadAddMeal(); }
         if (page === 'addcost') this.loadAddCost();
         if (page === 'adddeposit') this.loadAddDeposit();
         if (page === 'bazaar') this.loadBazarList();
@@ -3140,7 +3145,9 @@ https://u2l.ai/MessManager
         if (!this.messId) return;
         this._watchTablePrefs();
         if (!this.checkPerm('mealEntry')) { this.navigate('meals'); return; }
-        this.aamTab = 'meal';
+        // The Meal / Special Meal pick stays put across date changes; only
+        // entering the page (see navigate) starts on the Meal tab.
+        if (this.aamTab !== 'special') this.aamTab = 'meal';
         const now = new Date();
         const dateKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         if (!this._aamDate) this._aamDate = dateKey;
@@ -5501,6 +5508,7 @@ https://u2l.ai/MessManager
         window.addEventListener('online', () => {
             this._isOnline = true;
             this._showOnlineStatus(true);
+            this._watchMessLive();
             this._refreshCurrentPage();
         });
         window.addEventListener('offline', () => {
@@ -5574,7 +5582,55 @@ https://u2l.ai/MessManager
             banner.querySelector('.conn-text').textContent = 'Offline — changes will sync when connected';
         }
     },
-    _refreshCurrentPage() {
+    // ── live sync ───────────────────────────────────────────────
+    // One realtime listener on the mess keeps every open app in step: when any
+    // member adds a meal, expense, deposit or edit, the other members' current
+    // page redraws itself in the background (no reload, no page change).
+    _liveRef: null, _livePath: null, _liveHandler: null, _liveFirst: true, _liveTimer: null,
+    _watchMessLive() {
+        if (!this.messId || typeof db === 'undefined') return;
+        const path = 'messes/' + this.messId;
+        if (this._liveRef && this._livePath === path) return;
+        this._stopMessLive();
+        this._livePath = path;
+        this._liveFirst = true;
+        try {
+            this._liveRef = db.ref(path);
+            this._liveHandler = () => {
+                // The first callback is the current snapshot, not a change.
+                if (this._liveFirst) { this._liveFirst = false; return; }
+                this._queueLiveRefresh();
+            };
+            this._liveRef.on('value', this._liveHandler, () => {});
+        } catch (e) { this._liveRef = null; this._livePath = null; }
+    },
+    _stopMessLive() {
+        clearTimeout(this._liveTimer);
+        if (this._liveRef && this._liveHandler) {
+            try { this._liveRef.off('value', this._liveHandler); } catch (e) {}
+        }
+        this._liveRef = null; this._livePath = null; this._liveHandler = null; this._liveFirst = true;
+    },
+    _queueLiveRefresh(attempt) {
+        attempt = attempt || 0;
+        if (attempt > 30) return;
+        clearTimeout(this._liveTimer);
+        this._liveTimer = setTimeout(() => {
+            if (!this.messId || !this.currentUser) return;
+            // Never yank the page out from under an open dialog or a field
+            // somebody is typing into — retry once it is safe.
+            const modal = document.getElementById('modal-overlay');
+            const el = document.activeElement;
+            const busy = (modal && modal.classList.contains('active')) ||
+                (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+            if (busy) { this._queueLiveRefresh(attempt + 1); return; }
+            // Data-entry pages hold unsaved input — never redraw them underneath.
+            if ({ addmeal: 1, addcost: 1, adddeposit: 1 }[this.currentPage]) return;
+            try { this._cacheClearAll(); } catch (e) {}
+            try { this._refreshCurrentPage(true); } catch (e) {}
+        }, attempt ? 1200 : 900);
+    },
+    _refreshCurrentPage(skipElectricity) {
         const page = this.currentPage;
         if (!page) return;
         const loaders = {
@@ -5594,13 +5650,13 @@ https://u2l.ai/MessManager
             duty: () => this.loadDuty(),
             costtrash: () => this.loadCostTrash(),
             deptrash: () => this.loadDepTrash(),
-            electricity: () => this.showElectricityDetails(true),
+            electricity: async () => { await this.loadElectricity(); this.showElectricityDetails(true); },
         };
         if (loaders[page]) {
             try { loaders[page](); } catch (e) {}
         }
         // Pull-to-refresh also updates the live meter balance and recharge history.
-        try { this._refreshElectricity(true); } catch (e) {}
+        if (!skipElectricity) { try { this._refreshElectricity(true); } catch (e) {} }
     },
     _hintOffline() {
         if (!navigator.onLine) {
@@ -5709,8 +5765,11 @@ https://u2l.ai/MessManager
             const bal = document.getElementById('dash-elec-balance');
             if (bal) {
                 bal.textContent = cfg.balance === null || cfg.balance === undefined || cfg.balance === '' ? '৳ —' : '৳ ' + this.fmtNum(cfg.balance);
-                const low = cfg.balance !== null && cfg.balance !== undefined && cfg.balance !== '' && Number(cfg.balance) < Number(cfg.lowThreshold || 200);
+                const hasBal = cfg.balance !== null && cfg.balance !== undefined && cfg.balance !== '';
+                const low = hasBal && Number(cfg.balance) < Number(cfg.lowThreshold || 200);
                 bal.classList.toggle('low', low);
+                bal.classList.toggle('pos', hasBal && !low);
+                bal.classList.toggle('neg', low);
             }
         }
         const chk = document.getElementById('prof-elec-card');
@@ -5847,7 +5906,7 @@ https://u2l.ai/MessManager
             </div>
             <section class="ed-card ed-hero">
                 <div class="ed-hero-top"><span>Remaining balance</span><span><b>${prov}</b> · ${this.esc(cfg.number)}</span></div>
-                <div class="ed-balance${cfg.balance !== null && cfg.balance !== undefined && Number(cfg.balance) < Number(cfg.lowThreshold || 200) ? ' low' : ''}">৳${cfg.balance === null || cfg.balance === undefined ? '—' : this._money(cfg.balance)}</div>
+                <div class="ed-balance${cfg.balance !== null && cfg.balance !== undefined && cfg.balance !== '' ? (Number(cfg.balance) < Number(cfg.lowThreshold || 200) ? ' low neg' : ' pos') : ''}">৳${cfg.balance === null || cfg.balance === undefined ? '—' : this._money(cfg.balance)}</div>
                 <div class="ed-meta">
                     <span>Meter: ${this.esc(info.meter || cfg.number)}</span>
                     ${avg !== null ? `<span class="ed-avg">Avg. Daily Cost: ৳${this.fmtNum(avg)}</span>` : ''}
@@ -7546,7 +7605,7 @@ https://u2l.ai/MessManager
         this.openModal();
         document.getElementById('modal').classList.add('confirm-mode');
     },
-    signOut() { auth.signOut(); },
+    signOut() { this._stopMessLive(); auth.signOut(); },
     setProfilePic(dataUrl) {
         const ids = ['prof-avatar', 'dash-avatar'];
         ids.forEach(id => {

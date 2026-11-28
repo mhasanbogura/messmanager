@@ -3961,8 +3961,10 @@ img, canvas { max-width: 100%; }
 .elec-history-row small { color: #8a93a0; min-width: 52px; text-align: right; }
 .elec-history-row:last-child { border-bottom: none; }
 
-/* Electricity card low balance */
-#dash-elec-balance.low { color: #e53935; }
+/* Electricity card balance: same green/red as the Meal and Utility cards */
+#dash-elec-balance.pos { color: #2e7d32 !important; }
+#dash-elec-balance.neg,
+#dash-elec-balance.low { color: #d32f2f !important; }
 
 /* Electricity card header refresh */
 .adash-elec-head, .adash-fin-head { justify-self: stretch; display: flex; align-items: center; gap: 4px; }
@@ -3984,7 +3986,9 @@ img, canvas { max-width: 100%; }
 .ed-head-btn { background: none; border: none; color: var(--text); padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .ed-head-btn:hover { background: rgba(0,0,0,.08); }
 .ed-head-btn .material-icons-round { font-size: 22px; }
-.ed-balance.low { color: #e53935; }
+.ed-balance.pos { color: #2e7d32 !important; }
+.ed-balance.neg,
+.ed-balance.low { color: #d32f2f !important; }
 
 /* Electricity detail sheet (Meter Manager style) */
 .ed-card {
@@ -4436,3 +4440,24 @@ img, canvas { max-width: 100%; }
    barely above the field itself — one colour for all of them now. */
 [data-theme="dark"] ::placeholder,
 [data-theme="oled"] ::placeholder { color: #a8b2c4 !important; opacity: 1; }
+
+/* ==================== BOTTOM NAV: selected tab ====================
+   The light theme painted the selected tab plain black (#000) next to the
+   #616161 labels, so it read as "darker text" rather than a selection.
+   Give it the brand ink and a soft pill, the same language the active
+   pills/tabs use elsewhere. */
+.bottom-nav-item.active {
+    color: var(--primary);
+    background: rgba(11, 61, 145, .08);
+    font-weight: 600;
+}
+.bottom-nav-item.active:active { background: rgba(11, 61, 145, .15); }
+[data-theme="dark"] .bottom-nav-item.active,
+[data-theme="oled"] .bottom-nav-item.active {
+    color: var(--primary-ink, #7cb2f7);
+    background: rgba(124, 178, 247, .12);
+}
+[data-theme="dark"] .bottom-nav-item.active:active,
+[data-theme="oled"] .bottom-nav-item.active:active {
+    background: rgba(124, 178, 247, .2);
+}
