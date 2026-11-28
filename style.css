@@ -1645,13 +1645,14 @@ select.input-sm { cursor: pointer; }
 .adash-banner-slide.active { opacity: 1; pointer-events: auto; }
 .adash-app-icon { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
 .adash-avatar {
-    width: 38px; height: 38px; border-radius: 50%;
-    background: #333; color: #fff;
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--primary); color: #fff;
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; font-weight: 700; flex-shrink: 0;
+    font-family: 'Inter', sans-serif;
 }
-.adash-banner-text h2 { font-size: 15px; font-weight: 800; color: var(--text); line-height: 1.2; letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; }
-.adash-banner-text p { font-size: 10px; color: #888; letter-spacing: 1.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.adash-banner-text h2 { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.25; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; }
+.adash-banner-text p { font-size: 11px; color: var(--text-secondary, #5b6472); letter-spacing: 0.2px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
 .adash-head-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .adash-head-actions .icon-btn { color: var(--text); min-width: 36px; min-height: 36px; }
 .adash-head-actions .icon-btn:hover { background: var(--bg); border-radius: 50%; }
@@ -1853,7 +1854,6 @@ select.input-sm { cursor: pointer; }
 @media (max-width: 480px) {
     .adash-user h2 { font-size: 19px; }
     .adash-user p { font-size: 15px; }
-    .adash-avatar { width: 46px; height: 46px; font-size: 21px; }
     .adash-head-actions .material-icons-round { font-size: 24px; }
     .adash-mess-top h2 { font-size: 22px; }
     .adash-share { font-size: 13px; }
@@ -2475,7 +2475,7 @@ select.input-sm { cursor: pointer; }
     display: flex; align-items: center; gap: 12px; padding: 14px 16px;
 }
 .aprof-avatar {
-    width: 52px; height: 52px; border-radius: 50%; background: var(--primary); color: #fff;
+    width: 52px; height: 52px; border-radius: 14px; background: var(--primary); color: #fff;
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; font-weight: 700; flex-shrink: 0;
     font-family: 'Inter', sans-serif;
@@ -2986,8 +2986,8 @@ img, canvas { max-width: 100%; }
 /* ==================== ANDROID COMPACT MATCH ==================== */
 /* Brand header */
 .adash-head { padding: 8px 12px; gap: 6px; }
-.adash-banner-text h2 { font-size: 15px; }
-.adash-banner-text p { font-size: 9px; letter-spacing: 1px; }
+.adash-banner-text h2 { font-size: 16px; }
+.adash-banner-text p { font-size: 10px; letter-spacing: 0.2px; }
 .adash-head-actions .material-icons-round { font-size: 24px; }
 /* Mess card: no wrapping */
 .adash-mess-box { min-width: 0; }
@@ -3178,7 +3178,8 @@ img, canvas { max-width: 100%; }
 /* Dashboard special */
 [data-theme="oled"] .adash-mess-card { background: #0d0d0d; }
 [data-theme="oled"] .adash-share { color: #fff; }
-[data-theme="oled"] .adash-avatar { background: #2a2a2a; color: #fff; }
+/* Header avatar keeps the same brand-navy fill as the Settings avatar,
+   including in OLED where it used to turn grey. */
 [data-theme="oled"] .dash-meal-box.breakfast,
 [data-theme="oled"] .dash-meal-box.lunch,
 [data-theme="oled"] .dash-meal-box.dinner { background: #0d0d0d; border-color: #1a1a1a; }
@@ -4007,7 +4008,6 @@ img, canvas { max-width: 100%; }
 .ed-hero-top b { color: var(--primary); letter-spacing: .5px; }
 .ed-balance { font-size: 34px; font-weight: 800; letter-spacing: -.5px; color: var(--text); line-height: 1.15; margin: 4px 0 6px; }
 .ed-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--text-secondary, #8a93a0); }
-.ed-avg { color: #d99a2b; font-weight: 700; }
 .ed-list { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ed-list td { padding: 8px 2px; border-bottom: 1px solid var(--card-border); vertical-align: top; }
 .ed-list tr:last-child td { border-bottom: none; }
